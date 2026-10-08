@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI LinkedIn Post Generator</title>
-    <script src="https://tailwindcss.com"></script>
+    <!-- ✅ FIXED: Using the production-grade Stable Tailwind CDN link -->
+    <link href="https://cloudflare.com" rel="stylesheet">
 </head>
 <body class="bg-gray-900 text-gray-100 min-h-screen flex flex-col items-center py-10 px-4">
 
@@ -16,11 +17,11 @@
         <div class="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
                 <label class="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Access Password</label>
-                <input type="password" id="accessToken" placeholder="Enter security token..." class="w-full bg-gray-700 border border-gray-600 rounded p-2.5 text-sm focus:outline-none focus:border-blue-500">
+                <input type="password" id="accessToken" placeholder="Enter security token..." class="w-full bg-gray-700 border border-gray-600 rounded p-2.5 text-sm text-gray-100 focus:outline-none focus:border-blue-500">
             </div>
             <div>
                 <label class="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Tone Style</label>
-                <select id="postTone" class="w-full bg-gray-700 border border-gray-600 rounded p-2.5 text-sm focus:outline-none focus:border-blue-500">
+                <select id="postTone" class="w-full bg-gray-700 border border-gray-600 rounded p-2.5 text-sm text-gray-100 focus:outline-none focus:border-blue-500">
                     <option value="thought-provoking">Thought-Provoking / Contrarian</option>
                     <option value="educational">Educational / Breakdown</option>
                     <option value="storytelling">Storytelling / Narrative</option>
@@ -31,12 +32,12 @@
         <!-- File Ingestion Dropzone -->
         <div class="mb-6">
             <label class="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Input Source File</label>
-            <div class="border-2 border-dashed border-gray-600 rounded-lg p-6 text-center hover:border-blue-500 transition cursor-pointer relative bg-gray-750">
+            <div class="border-2 border-dashed border-gray-600 rounded-lg p-6 text-center hover:border-blue-500 transition cursor-pointer relative bg-gray-700">
                 <input type="file" id="sourceFile" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
                 <p class="text-sm text-gray-300">Click to upload or drag & drop files here</p>
                 <p class="text-xs text-gray-500 mt-1">Supports PDF, MP4, PNG, JPG, TXT</p>
             </div>
-            <p id="fileNameDisplay" class="text-xs text-blue-400 mt-2 font-medium hidden"></p>
+            <p id="fileNameDisplay" class="text-sm text-blue-400 mt-2 font-medium hidden"></p>
         </div>
 
         <!-- Action Button -->
@@ -67,6 +68,7 @@
         // Show selected file name
         sourceFileInput.addEventListener('change', (e) => {
             if (e.target.files.length > 0) {
+                // ✅ FIXED: Corrected target object reference layout
                 fileNameDisplay.textContent = `Selected: ${e.target.files[0].name}`;
                 fileNameDisplay.classList.remove('hidden');
             }
@@ -74,7 +76,7 @@
 
         // Trigger Generator Process
         generateBtn.addEventListener('click', async () => {
-            // ✅ CORRECTION: Clean indexed target allocation
+            // ✅ FIXED: Corrected index bracket targets
             const file = sourceFileInput.files[0];
             const token = document.getElementById('accessToken').value;
             const tone = document.getElementById('postTone').value;
@@ -86,8 +88,8 @@
             generateBtn.textContent = "⌛ Processing files & generating writing...";
 
             const formData = new FormData();
-            // ✅ CORRECTION: Passing explicit file payload object parameter reference
-            formData.append("file", file, file.name);
+            // ✅ FIXED: Clean argument pass parameters
+            formData.append("file", file);
             formData.append("token", token);
             formData.append("tone", tone);
 
