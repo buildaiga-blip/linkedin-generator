@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI LinkedIn Post Generator</title>
+    <script src="https://tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen flex flex-col items-center py-10 px-4">
+
+    <div class="w-full max-w-2xl bg-gray-800 rounded-xl shadow-2xl p-6 border border-gray-700">
+        <h1 class="text-3xl font-extrabold text-center mb-2 text-blue-400">📝 AI LinkedIn Post Generator</h1>
+        <p class="text-gray-400 text-center text-sm mb-8">Upload PDFs, Videos, Images, or Text to generate highly engaging posts.</p>
+
+        <!-- Configuration Section -->
+        <div class="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <label class="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Access Password</label>
+                <input type="password" id="accessToken" placeholder="Enter security token..." class="w-full bg-gray-700 border border-gray-600 rounded p-2.5 text-sm focus:outline-none focus:border-blue-500">
+            </div>
+            <div>
+                <label class="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Tone Style</label>
+                <select id="postTone" class="w-full bg-gray-700 border border-gray-600 rounded p-2.5 text-sm focus:outline-none focus:border-blue-500">
+                    <option value="thought-provoking">Thought-Provoking / Contrarian</option>
+                    <option value="educational">Educational / Breakdown</option>
+                    <option value="storytelling">Storytelling / Narrative</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- File Ingestion Dropzone -->
+        <div class="mb-6">
+            <label class="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Input Source File</label>
+            <div class="border-2 border-dashed border-gray-600 rounded-lg p-6 text-center hover:border-blue-500 transition cursor-pointer relative bg-gray-750">
+                <input type="file" id="sourceFile" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+                <p class="text-sm text-gray-300">Click to upload or drag & drop files here</p>
+                <p class="text-xs text-gray-500 mt-1">Supports PDF, MP4, PNG, JPG, TXT</p>
+            </div>
+            <p id="fileNameDisplay" class="text-xs text-blue-400 mt-2 font-medium hidden"></p>
+        </div>
+
+        <!-- Action Button -->
+        <button id="generateBtn" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-4 rounded-lg transition shadow-lg flex justify-center items-center gap-2">
+            🚀 Generate LinkedIn Post
+        </button>
+
+        <!-- Output Feed Preview -->
+        <div class="mt-8 border-t border-gray-700 pt-6 hidden" id="outputContainer">
+            <div class="flex justify-between items-center mb-3">
+                <span class="text-xs font-bold uppercase tracking-wider text-gray-400">Generated Draft</span>
+                <button id="copyBtn" class="text-xs bg-gray-700 hover:bg-gray-600 text-blue-400 font-semibold py-1 px-3 rounded border border-gray-600 transition">📋 Copy Text</button>
+            </div>
+            <div id="outputBox" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-4 font-mono text-sm whitespace-pre-wrap text-gray-200 leading-relaxed max-h-96 overflow-y-auto"></div>
+        </div>
+    </div>
+
+    <script>
+        // Backend URL (Replace with your Render.com or Hugging Face URL once deployed)
+        const BACKEND_URL = "https://onrender.com";
+
+        const sourceFileInput = document.getElementById('sourceFile');
+        const fileNameDisplay = document.getElementById('fileNameDisplay');
+        const generateBtn = document.getElementById('generateBtn');
+        const outputContainer = document.getElementById('outputContainer');
+        const outputBox = document.getElementById('outputBox');
+        const copyBtn = document.getElementById('copyBtn');
+
+        // Show selected file name
+        sourceFileInput.addEventListener('change', (e) => {
+            if(e.target.files.length > 0) {
+                fileNameDisplay.textContent = `Selected: ${e.target.files[0].name}`;
+                fileNameDisplay.classList.remove('hidden');
+            }
+        });
+
+        // Trigger Generator Process
+        generateBtn.addEventListener('click', async () => {
+            const file = sourceFileInput.files[0];
+            const token = document.getElementById('accessToken').value;
+            const tone = document.getElementById('postTone').value;
+
+            if (!token) return alert("Please enter your Access Password.");
+            if (!file) return alert("Please upload a file first.");
+
+            generateBtn.disabled = true;
+            generateBtn.textContent = "⌛ Processing files & generating writing...";
+
+            const formData = new FormData();
+            formData.append("file", file);
+            formData.append("token", token);
+            formData.append("tone", tone);
+
+            try {
+                const response = await fetch(BACKEND_URL, {
+                    method: "POST",
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) throw new Error(data.detail || "Something went wrong.");
+
+                outputBox.textContent = data.linkedin_post;
+                outputContainer.classList.remove('hidden');
+            } catch (error) {
+                alert(`Error: ${error.message}`);
+            } finally {
+                generateBtn.disabled = false;
+                generateBtn.textContent = "🚀 Generate LinkedIn Post";
+            }
+        });
+
+        // Simple Copy Action
+        copyBtn.addEventListener('click', () => {
+            navigator.clipboard.writeText(outputBox.textContent);
+            copyBtn.textContent = "✅ Copied!";
+            setTimeout(() => copyBtn.textContent = "📋 Copy Text", 2000);
+        });
+    </script>
+</body>
+</html>
