@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI LinkedIn Post Generator</title>
-    <!-- Stable production-grade Tailwind CSS design script engine -->
-    <link href="https://cloudflare.com" rel="stylesheet">
+    <!-- ✅ FIXED: Replaced the unstable link tag with the official, bulletproof Tailwind JavaScript script engine -->
+    <script src="https://tailwindcss.com"></script>
 </head>
 <body class="bg-gray-900 text-gray-100 min-h-screen flex flex-col items-center py-10 px-4">
 
@@ -16,11 +16,12 @@
         <!-- Configuration Section -->
         <div class="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-                <label class="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Access Password</label>
+                <!-- ✅ FIXED: Linked the label directly to the input box using the 'for' attribute to resolve the warning at the top of your console -->
+                <label for="accessToken" class="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Access Password</label>
                 <input type="password" id="accessToken" placeholder="Enter security token..." class="w-full bg-gray-700 border border-gray-600 rounded p-2.5 text-sm text-gray-100 focus:outline-none focus:border-blue-500">
             </div>
             <div>
-                <label class="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Tone Style</label>
+                <label for="postTone" class="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Tone Style</label>
                 <select id="postTone" class="w-full bg-gray-700 border border-gray-600 rounded p-2.5 text-sm text-gray-100 focus:outline-none focus:border-blue-500">
                     <option value="thought-provoking">Thought-Provoking / Contrarian</option>
                     <option value="educational">Educational / Breakdown</option>
@@ -31,7 +32,7 @@
 
         <!-- File Ingestion Dropzone -->
         <div class="mb-6">
-            <label class="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Input Source File</label>
+            <label for="sourceFile" class="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Input Source File</label>
             <div class="border-2 border-dashed border-gray-600 rounded-lg p-6 text-center hover:border-blue-500 transition cursor-pointer relative bg-gray-700">
                 <input type="file" id="sourceFile" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
                 <p class="text-sm text-gray-300">Click to upload or drag & drop files here</p>
@@ -68,7 +69,6 @@
         // Show selected file name
         sourceFileInput.addEventListener('change', (e) => {
             if (e.target.files.length > 0) {
-                // ✅ FIXED: Corrected target object reference layout to pull item 0 name string
                 fileNameDisplay.textContent = `Selected: ${e.target.files[0].name}`;
                 fileNameDisplay.classList.remove('hidden');
             }
@@ -76,7 +76,6 @@
 
         // Trigger Generator Process
         generateBtn.addEventListener('click', async () => {
-            // ✅ FIXED: Grabbed the single raw file chunk out of array position 0 explicitly
             const file = sourceFileInput.files[0];
             const token = document.getElementById('accessToken').value;
             const tone = document.getElementById('postTone').value;
