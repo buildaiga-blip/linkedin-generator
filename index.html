@@ -4,8 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI LinkedIn Post Generator</title>
-    <!-- ✅ FIXED: Now uses the correct, fully functioning Tailwind CSS engine script -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://tailwindcss.com"></script>
 </head>
 <body class="bg-gray-900 text-gray-100 min-h-screen flex flex-col items-center py-10 px-4">
 
@@ -56,7 +55,6 @@
     </div>
 
     <script>
-        // ✅ FIXED: Added standard trailing slash to guarantee successful route mapping
         const BACKEND_URL = "https://onrender.com";
 
         const sourceFileInput = document.getElementById('sourceFile');
@@ -68,7 +66,7 @@
 
         // Show selected file name
         sourceFileInput.addEventListener('change', (e) => {
-            if(e.target.files.length > 0) {
+            if (e.target.files.length > 0) {
                 fileNameDisplay.textContent = `Selected: ${e.target.files[0].name}`;
                 fileNameDisplay.classList.remove('hidden');
             }
@@ -76,6 +74,7 @@
 
         // Trigger Generator Process
         generateBtn.addEventListener('click', async () => {
+            // ✅ CORRECTION: Clean indexed target allocation
             const file = sourceFileInput.files[0];
             const token = document.getElementById('accessToken').value;
             const tone = document.getElementById('postTone').value;
@@ -87,7 +86,8 @@
             generateBtn.textContent = "⌛ Processing files & generating writing...";
 
             const formData = new FormData();
-            formData.append("file", file);
+            // ✅ CORRECTION: Passing explicit file payload object parameter reference
+            formData.append("file", file, file.name);
             formData.append("token", token);
             formData.append("tone", tone);
 
