@@ -4,12 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI LinkedIn Post Generator</title>
-    <!-- Production-grade Tailwind CSS Injector -->
-    <link href="https://cloudflare.com" rel="stylesheet">
+    <!-- ✅ FIXED: Replaced the link tag with the official, bulletproof Tailwind JavaScript script engine -->
+    <script src="https://tailwindcss.com"></script>
 </head>
 <body class="bg-gray-900 text-gray-100 min-h-screen flex flex-col items-center py-10 px-4">
 
-    <div class="w-full max-w-2xl bg-gray-800 rounded-xl shadow-2xl p-6 border border-gray-700">
+    <div class="w-full max-w-2xl bg-gray-800 rounded-xl shadow-2xl p-6 border border-gray-700 mt-10">
         <h1 class="text-3xl font-extrabold text-center mb-2 text-blue-400">📝 AI LinkedIn Post Generator</h1>
         <p class="text-gray-400 text-center text-sm mb-8">Upload PDFs, Videos, Images, or Text to generate highly engaging posts.</p>
 
@@ -56,7 +56,6 @@
     </div>
 
     <script>
-        // ✅ CACHE BREAKER INCLUDED: Explicit route targeting that bypasses browser connection memory locks
         const BACKEND_URL = "https://onrender.com";
 
         const sourceFileInput = document.getElementById('sourceFile');
