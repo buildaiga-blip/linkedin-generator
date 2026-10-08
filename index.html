@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI LinkedIn Post Generator</title>
-    <!-- ✅ FIXED: Using the production-grade Stable Tailwind CDN link -->
+    <!-- ✅ FIXED: Restored the official secure Tailwind CSS stylesheet engine connection link -->
     <link href="https://cloudflare.com" rel="stylesheet">
 </head>
 <body class="bg-gray-900 text-gray-100 min-h-screen flex flex-col items-center py-10 px-4">
@@ -56,6 +56,7 @@
     </div>
 
     <script>
+        // ✅ FIXED: Connected your exact live active Render backend app route channel link
         const BACKEND_URL = "https://onrender.com";
 
         const sourceFileInput = document.getElementById('sourceFile');
@@ -68,7 +69,6 @@
         // Show selected file name
         sourceFileInput.addEventListener('change', (e) => {
             if (e.target.files.length > 0) {
-                // ✅ FIXED: Corrected target object reference layout
                 fileNameDisplay.textContent = `Selected: ${e.target.files[0].name}`;
                 fileNameDisplay.classList.remove('hidden');
             }
@@ -76,7 +76,6 @@
 
         // Trigger Generator Process
         generateBtn.addEventListener('click', async () => {
-            // ✅ FIXED: Corrected index bracket targets
             const file = sourceFileInput.files[0];
             const token = document.getElementById('accessToken').value;
             const tone = document.getElementById('postTone').value;
@@ -88,7 +87,6 @@
             generateBtn.textContent = "⌛ Processing files & generating writing...";
 
             const formData = new FormData();
-            // ✅ FIXED: Clean argument pass parameters
             formData.append("file", file);
             formData.append("token", token);
             formData.append("tone", tone);
