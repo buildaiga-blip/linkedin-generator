@@ -177,7 +177,7 @@ details > div{margin-top:10px}
 
         <div class="field">
           <label class="check"><input type="checkbox" id="wantAi" checked>
-            <span>Also create an AI illustration for the cover<br><span class="hint">Needs an image-capable Gemini plan. If unavailable, the carousel is still made.</span></span>
+            <span>Also create an AI illustration for the cover<br><span class="hint">Uses a Gemini image model if your plan has one. On a free plan it is drawn as vector art instead, so it always works.</span></span>
           </label>
         </div>
 
@@ -204,6 +204,7 @@ details > div{margin-top:10px}
             </div>
             <textarea id="postText" aria-label="Edit your post"></textarea>
           </div>
+          <p class="hint" id="modelsUsed" hidden></p>
           <div class="bar">
             <span id="count"></span>
             <button class="btn ghost" id="copyBtn" type="button">Copy post</button>
@@ -306,11 +307,11 @@ async function request(url,opts,timeoutMs){
     if(!r.ok){
       let d=data&&data.detail;
       if(Array.isArray(d)) d=d.map(x=>x.msg||JSON.stringify(x)).join('; ');
-      throw new Error(d||`Server returned ${r.status}`);
+      const err=new Error(d||`Server returned ${r.status}`); err.status=r.status; throw err;
     }
     return data;
   }catch(e){
-    if(e.name==='AbortError') throw new Error('The server took too long to respond. Try again, or use a smaller file.');
+    if(e.name==='AbortError'){const err=new Error('The server took too long to respond. Try again, or use a smaller file.');err.status=504;throw err}
     if(e instanceof TypeError) throw new Error('Could not reach the backend. Check the Render URL, that the service is running, and that the page is served over https.');
     throw e;
   }finally{clearTimeout(t)}
@@ -344,12 +345,22 @@ els.gen.addEventListener('click',async()=>{
   els.gen.disabled=true;
   try{
     await wakeServer();
-    setStatus('Reading your source and writing the post…');
-    const fd=new FormData();
-    fd.append('file',file); fd.append('token',token);
-    fd.append('tone',els.tone.value); fd.append('tag_names',els.tags.value);
-    fd.append('notes',els.notes.value);
-    const data=await request(backendBase()+'/api/generate',{method:'POST',body:fd},240000);
+    const build=()=>{const fd=new FormData();
+      fd.append('file',file); fd.append('token',token);
+      fd.append('tone',els.tone.value); fd.append('tag_names',els.tags.value);
+      fd.append('notes',els.notes.value); return fd};
+    let data;
+    for(let attempt=1;;attempt++){
+      setStatus(attempt===1?'Reading your source and writing the post…':'The AI was busy. Trying again automatically…');
+      try{ data=await request(backendBase()+'/api/generate',{method:'POST',body:build()},240000); break }
+      catch(e){
+        if(attempt<3 && [429,502,503,504].includes(e.status) && !/password|API key|Unsupported|too large|empty/i.test(e.message)){
+          setStatus('The AI is busy. Waiting a few seconds, then trying again…');
+          await new Promise(r=>setTimeout(r,8000*attempt)); continue;
+        }
+        throw e;
+      }
+    }
 
     state.data=data; state.aiImage=null;
     showResult();
@@ -369,11 +380,13 @@ async function fetchAiImage(){
   try{
     const fd=new FormData();
     fd.append('token',els.token.value); fd.append('prompt',state.data.image_prompt||state.data.hook);
-    const r=await request(backendBase()+'/api/image',{method:'POST',body:fd},120000);
+    const r=await request(backendBase()+'/api/image',{method:'POST',body:fd},180000);
     const src=`data:${r.mime};base64,${r.image_b64}`;
     const img=new Image();
     await new Promise((ok,no)=>{img.onload=ok;img.onerror=no;img.src=src});
-    state.aiImage=img; els.aiImg.src=src; els.aiWrap.hidden=false;
+    state.aiImage=img; state.aiExt=(r.mime||'').includes('svg')?'svg':(r.mime||'').includes('jpeg')?'jpg':'png';
+    els.aiImg.src=src; els.aiWrap.hidden=false;
+    if(r.kind==='svg'){els.aiNote.textContent='Image models are not included in your Gemini plan, so this illustration was drawn as vector art. It works the same in the carousel.';els.aiNote.hidden=false}
     await renderSlides();
     setStatus('');
   }catch(e){
@@ -389,6 +402,9 @@ function showResult(){
   const d=state.data;
   els.empty.hidden=true; els.result.hidden=false;
   els.postText.value=d.post;
+  const mu=$('modelsUsed'), m=d.models||{};
+  mu.textContent=m.writer?('Models used: '+(m.prep?m.prep+' (reads the file) → ':'')+m.writer+' (writes the post)'):'';
+  mu.hidden=!m.writer;
   const name=els.author.value.trim()||'Your name';
   els.liName.textContent=name; els.avatar.textContent=name[0].toUpperCase();
   updateCount(); autoGrow();
@@ -526,9 +542,9 @@ function downloadUrl(url,name){const a=document.createElement('a');a.href=url;a.
 function downloadCanvas(canvas,name){canvas.toBlob(b=>{const u=URL.createObjectURL(b);downloadUrl(u,name);setTimeout(()=>URL.revokeObjectURL(u),2000)},'image/png')}
 $('zipBtn').addEventListener('click',async()=>{
   for(let i=0;i<state.slides.length;i++){downloadCanvas(state.slides[i][1],`slide-${i+1}.png`);await new Promise(r=>setTimeout(r,350))}
-  if(state.aiImage) downloadUrl(els.aiImg.src,'ai-illustration.png');
+  if(state.aiImage) downloadUrl(els.aiImg.src,'ai-illustration.'+(state.aiExt||'png'));
 });
-$('aiDl').addEventListener('click',()=>downloadUrl(els.aiImg.src,'ai-illustration.png'));
+$('aiDl').addEventListener('click',()=>downloadUrl(els.aiImg.src,'ai-illustration.'+(state.aiExt||'png')));
 $('pdfBtn').addEventListener('click',()=>{
   if(!window.jspdf) return toast('PDF library failed to load. Download the PNGs instead.');
   const {jsPDF}=window.jspdf;
