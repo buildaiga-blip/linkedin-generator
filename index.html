@@ -119,6 +119,12 @@ input[type=date],input[type=time]{padding:8px 10px;border:1px solid var(--line);
 label.btn{margin:0}
 .panel h2.sec small{font-family:var(--body);font-weight:500;font-size:.8125rem;color:var(--muted)}
 [hidden]{display:none!important}
+.gfxtools{display:grid;gap:12px;margin:0 0 16px}
+.gfxtools .field{margin:0}
+.aitools{margin-top:16px;padding-top:14px;border-top:1px solid var(--line)}
+
+.exportrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:12px;border:1px solid var(--line);border-radius:10px;background:#F7F9FB}
+.exportrow b{font-size:.875rem;margin-right:4px}
 </style>
 </head>
 <body>
@@ -186,8 +192,10 @@ label.btn{margin:0}
         </div>
 
         <div class="field">
-          <label for="authorName">Your name (shown on graphics)</label>
-          <input type="text" id="authorName" placeholder="Gaurav" maxlength="40">
+          <label for="authorName">Your name (default on graphics)</label>
+          <input type="text" id="authorName" placeholder="Gaurav" maxlength="60">
+          <p class="hint">In a series, a number in the name counts up for each post. “Gaurav Agarwal IR series Part 1” gives Part 1, Part 2, Part 3… You can also use {n}.</p>
+          <p class="hint">In a series you can give each post its own name under Graphics.</p>
         </div>
 
         <div class="field">
@@ -238,8 +246,15 @@ label.btn{margin:0}
             <label for="seriesGap">then</label>
             <select id="seriesGap"><option value="1">every day</option><option value="2" selected>every 2 days</option><option value="3">every 3 days</option><option value="7">every week</option></select>
             <button class="btn" id="saveAllBtn" type="button">Save all to library</button>
+            <button class="btn ghost" id="allAiBtn" type="button">Create illustrations for all posts</button>
           </div>
           <p class="hint">Leave the date empty to save them as drafts. Dates make them appear in your calendar reminders.</p>
+          <div class="exportrow" style="margin-top:12px">
+            <b>Save the whole series</b>
+            <button class="btn" id="dlSeriesZip" type="button">Download series .zip</button>
+            <button class="btn ghost" id="dlSeriesDir" type="button" hidden>Save series to a folder…</button>
+            <span class="hint dirhint" hidden style="margin:0">Folder saving works in Chrome or Edge on a computer. Here, use the .zip.</span>
+          </div>
         </section>
 
         <section class="panel" aria-labelledby="postHd">
@@ -284,6 +299,25 @@ label.btn{margin:0}
               <button class="btn ghost" id="zipBtn" type="button">Download all PNGs</button>
             </span>
           </h2>
+          <div class="gfxtools">
+            <div class="exportrow">
+              <b>Save this post (text + graphics)</b>
+              <button class="btn" id="dlPostZip" type="button">Download .zip</button>
+              <button class="btn ghost" id="dlPostDir" type="button" hidden>Save to a folder…</button>
+              <span class="hint dirhint" hidden style="margin:0">Saving straight into a folder works in Chrome or Edge on a computer. Here, use the .zip.</span>
+            </div>
+            <div class="field">
+              <label for="postLabel">Name shown on this post's graphics</label>
+              <input type="text" id="postLabel" maxlength="60" autocomplete="off">
+              <p class="hint">Leave empty to use the name from the left panel (its “Part 1” counts up automatically). Type here to give this post its own name.</p>
+            </div>
+            <div class="inline" id="labelBulk" hidden>
+              <button class="btn ghost" id="numberLabels" type="button">Add “Part 1 of N” to every post's name</button>
+              <button class="btn ghost" id="clearLabels" type="button">Use the same name on all posts</button>
+            </div>
+            <div class="inline"><button class="btn ghost" id="shuffleBtn" type="button">Shuffle design</button>
+              <span class="hint" style="margin:0">Changes colours and the cover layout. Text stays the same.</span></div>
+          </div>
           <div class="gallery" id="gallery"></div>
           <div id="aiWrap" hidden style="margin-top:16px">
             <div class="slide ai-img">
@@ -292,7 +326,14 @@ label.btn{margin:0}
             </div>
           </div>
           <p id="aiNote" hidden></p>
-          <div class="bar" style="margin-top:12px"><button class="btn ghost" id="retryAi" type="button" hidden>Try AI illustration again</button></div>
+          <div class="aitools">
+            <label for="aiHint">Illustration: what should it show? (optional)</label>
+            <div class="inline">
+              <input type="text" id="aiHint" maxlength="300" placeholder="e.g. an earnings report on a podium beside a rising chart">
+              <button class="btn ghost" id="retryAi" type="button">Create AI illustration for this post</button>
+              <button class="btn ghost" id="removeAi" type="button" hidden>Remove illustration</button>
+            </div>
+          </div>
         </section>
       </div>
     </div>
@@ -469,38 +510,50 @@ async function loadResult(data){
 /* ============ AI ILLUSTRATION (one per post) ============ */
 function applyAi(){
   const d=state.data; els.aiNote.hidden=true;
+  $('aiHint').value=(d&&d._aiHint)||'';
   if(d&&d._ai){
-    state.aiImage=d._ai.img; state.aiExt=d._ai.ext; els.aiImg.src=d._ai.src; els.aiWrap.hidden=false; els.retryAi.hidden=true;
-    if(d._ai.note){els.aiNote.textContent=d._ai.note;els.aiNote.hidden=false}
+    state.aiImage=d._ai.img; state.aiExt=d._ai.ext; els.aiImg.src=d._ai.src; els.aiWrap.hidden=false;
+    els.retryAi.textContent='Regenerate illustration'; $('removeAi').hidden=false;
+    const note=[d._ai.concept&&('Illustration idea: '+d._ai.concept+'.'),d._ai.note].filter(Boolean).join(' ');
+    if(note){els.aiNote.textContent=note;els.aiNote.hidden=false}
   }else{
-    state.aiImage=null; els.aiWrap.hidden=true; els.retryAi.hidden=false; els.retryAi.textContent='Create AI illustration for this post';
+    state.aiImage=null; els.aiWrap.hidden=true; els.retryAi.textContent='Create AI illustration for this post'; $('removeAi').hidden=true;
   }
+  els.retryAi.hidden=false;
 }
-async function fetchAiImage(){
-  const d=state.data; if(!d) return;
-  els.retryAi.hidden=true; els.aiNote.hidden=true;
-  setStatus('Creating the AI illustration…');
+async function fetchAiImage(d=state.data,quiet=false){
+  if(!d) return;
+  const prev=d._ai, n=d._aiN===undefined?0:d._aiN+1; d._aiN=n;      // n = how many times this post's picture was redone
+  const t=currentTheme();
+  els.retryAi.disabled=true; els.aiNote.hidden=true;
+  if(!quiet) setStatus('Creating the AI illustration…');
   try{
     const fd=new FormData();
-    fd.append('token',els.token.value); fd.append('prompt',d.image_prompt||d.hook);
+    fd.append('token',els.token.value); fd.append('prompt',d.image_prompt||d.hook||'');
+    fd.append('hook',d.hook||''); fd.append('points',(d.key_points||[]).join('|')); fd.append('post',d.post||'');
+    fd.append('hint',(d._aiHint||'').trim()); fd.append('palette',[t.bg,t.accent,t.hi,t.ink,t.muted].join(','));
+    fd.append('variation',n); fd.append('avoid',(prev&&prev.concept)||'');
     const r=await request(backendBase()+'/api/image',{method:'POST',body:fd},180000);
     const src=`data:${r.mime};base64,${r.image_b64}`;
     const img=new Image();
     await new Promise((ok,no)=>{img.onload=ok;img.onerror=no;img.src=src});
-    d._ai={src,img,ext:(r.mime||'').includes('svg')?'svg':(r.mime||'').includes('jpeg')?'jpg':'png',
-      note:r.kind==='svg'?'Image models are not included in your Gemini plan, so this illustration was drawn as vector art. It works the same in the carousel.':''};
-    setStatus('');
+    d._ai={src,img,ext:(r.mime||'').includes('svg')?'svg':(r.mime||'').includes('jpeg')?'jpg':'png',concept:r.concept||'',
+      note:r.kind==='svg'?'Drawn as vector art because image models are not included in your Gemini plan.':''};
+    if(!quiet) setStatus('');
     if(state.data===d){applyAi(); await renderSlides()}
   }catch(e){
-    setStatus('');
+    if(!quiet) setStatus('');
     if(state.data===d){
-      state.aiImage=null; els.aiWrap.hidden=true;
-      els.aiNote.textContent='AI illustration unavailable: '+e.message+' The carousel graphics above are unaffected.';
-      els.aiNote.hidden=false; els.retryAi.hidden=false; els.retryAi.textContent='Try AI illustration again';
+      applyAi();
+      els.aiNote.textContent='AI illustration unavailable: '+e.message+(prev?' Your current illustration is kept.':' The carousel graphics are unaffected.');
+      els.aiNote.hidden=false;
     }
-  }
+  }finally{els.retryAi.disabled=false}
 }
-els.retryAi.addEventListener('click',fetchAiImage);
+els.retryAi.addEventListener('click',()=>fetchAiImage());
+$('aiHint').addEventListener('input',()=>{if(state.data)state.data._aiHint=$('aiHint').value});
+$('aiHint').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();fetchAiImage()}});
+$('removeAi').addEventListener('click',async()=>{const d=state.data; if(!d) return; d._ai=null; applyAi(); await renderSlides(); toast('Illustration removed')});
 
 function showResult(scroll=true){
   const d=state.data;
@@ -513,6 +566,7 @@ function showResult(scroll=true){
   els.liName.textContent=name; els.avatar.textContent=name[0].toUpperCase();
   $('postHd').textContent=state.series.length>1?`Post ${state.idx+1} of ${state.series.length}`:'Post draft';
   $('planDate').value=d._date||''; $('undoBtn').hidden=!d._undo;
+  $('postLabel').value=d._label||''; $('postLabel').placeholder=defaultLabel(d)||'Name on graphics';
   updateCount(); autoGrow();
   if(scroll) els.result.scrollIntoView({behavior:'smooth',block:'start'});
 }
@@ -538,7 +592,7 @@ const THEMES={
 };
 const currentTheme=()=>THEMES[document.querySelector('input[name=theme]:checked').value];
 document.querySelectorAll('input[name=theme]').forEach(r=>r.addEventListener('change',()=>state.data&&renderSlides()));
-els.author.addEventListener('change',()=>{if(state.data){showResultName();renderSlides()}});
+els.author.addEventListener('change',()=>{if(state.data){showResultName();$('postLabel').placeholder=defaultLabel(state.data)||'Name on graphics';renderSlides()}});
 function showResultName(){const n=els.author.value.trim()||'Your name';els.liName.textContent=n;els.avatar.textContent=n[0].toUpperCase()}
 
 function wrapLines(ctx,text,maxW){
@@ -567,10 +621,24 @@ function coverCrop(ctx,img,x,y,w,h){
   ctx.save();ctx.beginPath();ctx.rect(x,y,w,h);ctx.clip();
   ctx.drawImage(img,x+(w-dw)/2,y+(h-dh)/2,dw,dh);ctx.restore();
 }
-function footer(ctx,t,label){
-  const name=els.author.value.trim();
+/* In a series, "Part 1" (or {n}) in the name counts up by itself: Part 1, Part 2, Part 3... */
+const hasNumbering=name=>/\{n\}|\{total\}|\bPart\s*\d+/i.test(name||'');
+function numberName(name,i,n){
+  if(!name||n<2) return name;
+  if(/\{n\}|\{total\}/i.test(name)) return name.replace(/\{n\}/gi,i+1).replace(/\{total\}/gi,n);
+  return name.replace(/(\bPart\s*)\d+/i,(m,a)=>a+(i+1));
+}
+const defaultLabel=d=>{const i=state.series.indexOf(d); return numberName(els.author.value.trim(),i<0?0:i,state.series.length)};
+const labelFor=d=>{const v=d&&d._label; return (v!==undefined&&v!==null&&String(v).trim())?String(v).trim():defaultLabel(d)};
+function footer(ctx,t,label,d){
+  const name=labelFor(d);
   ctx.font=`500 30px ${BODY}`;ctx.fillStyle=t.muted;ctx.textBaseline='alphabetic';
-  if(name){ctx.textAlign='left';ctx.fillText(name,80,H-70)}
+  const maxW=W-160-(label?ctx.measureText(label).width+40:0);
+  if(name){
+    let txt=name;
+    if(ctx.measureText(txt).width>maxW){while(txt.length>1&&ctx.measureText(txt+'…').width>maxW)txt=txt.slice(0,-1);txt+='…'}
+    ctx.textAlign='left';ctx.fillText(txt,80,H-70);
+  }
   ctx.textAlign='right';ctx.fillText(label,W-80,H-70);ctx.textAlign='left';
 }
 function newCanvas(t){
@@ -579,18 +647,19 @@ function newCanvas(t){
 }
 
 function slideCover(d,t,img){
-  const [c,ctx]=newCanvas(t);
-  let textTop=200,maxH=820;
-  if(img){
-    coverCrop(ctx,img,0,0,W,680);
-    ctx.fillStyle=t.hi;ctx.fillRect(0,680,W,14);
-    textTop=770;maxH=400;
+  const [c,ctx]=newCanvas(t); const lay=img?(d._cover||'top'):'plain';
+  let textTop=250,maxH=760,maxF=132;
+  if(lay==='top'){
+    coverCrop(ctx,img,0,0,W,680); ctx.fillStyle=t.hi;ctx.fillRect(0,680,W,14); textTop=770;maxH=400;maxF=96;
+  }else if(lay==='bottom'){
+    ctx.fillStyle=t.hi;ctx.fillRect(0,598,W,14); coverCrop(ctx,img,0,612,W,H-612-150); textTop=150;maxH=420;maxF=96;
+  }else if(lay==='inset'){
+    ctx.fillStyle=t.hi;ctx.fillRect(96,116,920,520); coverCrop(ctx,img,80,100,920,520); textTop=720;maxH=440;maxF=96;
   }else{
-    ctx.fillStyle=t.hi;ctx.fillRect(80,textTop-40,120,14);
-    textTop=250;maxH=760;
+    ctx.fillStyle=t.hi;ctx.fillRect(80,160,120,14);
   }
-  drawText(ctx,d.hook,80,textTop,{maxW:W-160,maxH,max:img?96:132,min:54,weight:800,family:DISPLAY,lh:1.08,color:t.ink});
-  footer(ctx,t,'Swipe');
+  drawText(ctx,d.hook,80,textTop,{maxW:W-160,maxH,max:maxF,min:54,weight:800,family:DISPLAY,lh:1.08,color:t.ink});
+  footer(ctx,t,'Swipe',d);
   return c;
 }
 function slidePoints(d,t){
@@ -604,7 +673,7 @@ function slidePoints(d,t){
     ctx.fillStyle=i%2?t.hi:t.accent;ctx.fillRect(80,y,14,rowH-28);
     drawText(ctx,p,130,y+30,{maxW:W-260,maxH:rowH-90,max:56,min:32,weight:700,family:DISPLAY,lh:1.15,color:t.ink});
   });
-  footer(ctx,t,'');
+  footer(ctx,t,'',d);
   return c;
 }
 function slideStat(d,t){
@@ -612,7 +681,7 @@ function slideStat(d,t){
   ctx.fillStyle=t.hi;ctx.fillRect(80,250,120,14);
   const h=drawText(ctx,d.stat_value,80,320,{maxW:W-160,maxH:420,max:260,min:90,weight:800,family:DISPLAY,lh:1.02,color:t.accent});
   drawText(ctx,d.stat_label,80,320+h+50,{maxW:W-200,maxH:400,max:60,min:36,weight:500,family:BODY,lh:1.3,color:t.ink});
-  footer(ctx,t,'');
+  footer(ctx,t,'',d);
   return c;
 }
 function slideClosing(d,t){
@@ -621,17 +690,21 @@ function slideClosing(d,t){
   drawText(ctx,d.closing_question||'What is your take?',80,320,{maxW:W-160,maxH:620,max:92,min:48,weight:800,family:DISPLAY,lh:1.12,color:t.ink});
   ctx.font=`500 36px ${BODY}`;ctx.fillStyle=t.muted;ctx.textBaseline='top';
   ctx.fillText('Tell me in the comments.',80,1030);
-  footer(ctx,t,'');
+  footer(ctx,t,'',d);
   return c;
 }
 
+function buildSlideList(d,img){
+  let t=currentTheme(); if(d._swap) t={...t,accent:t.hi,hi:t.accent};
+  const list=[['Cover',slideCover(d,t,img)],['Key takeaways',slidePoints(d,t)]];
+  if(d.stat_value&&d.stat_value.trim()) list.push(['Key number',slideStat(d,t)]);
+  list.push(['Closing question',slideClosing(d,t)]);
+  return list;
+}
 async function renderSlides(){
   const d=state.data; if(!d) return;
   try{await Promise.all([document.fonts.load(`800 40px "Bricolage Grotesque"`),document.fonts.load(`700 40px "Bricolage Grotesque"`),document.fonts.load(`500 40px "DM Sans"`),document.fonts.load(`700 40px "DM Sans"`)])}catch(e){}
-  const t=currentTheme();
-  const list=[['Cover',slideCover(d,t,state.aiImage)],['Key takeaways',slidePoints(d,t)]];
-  if(d.stat_value&&d.stat_value.trim()) list.push(['Key number',slideStat(d,t)]);
-  list.push(['Closing question',slideClosing(d,t)]);
+  const list=buildSlideList(d,state.aiImage);
   state.slides=list;
   els.gallery.replaceChildren();
   list.forEach(([name,canvas],i)=>{
@@ -662,7 +735,7 @@ $('pdfBtn').addEventListener('click',()=>{
 /* ============ SERIES TABS ============ */
 const shorten=(t,n)=>{t=String(t||'');return t.length>n?t.slice(0,n-1)+'…':t};
 function renderTabs(){
-  const multi=state.series.length>1; $('seriesPanel').hidden=!multi; if(!multi) return;
+  const multi=state.series.length>1; $('seriesPanel').hidden=!multi; $('labelBulk').hidden=!multi; if(!multi) return;
   $('seriesTitle').textContent=`${state.seriesTitle} · ${state.series.length} posts`;
   const box=$('seriesTabs'); box.replaceChildren();
   state.series.forEach((p,i)=>{
@@ -724,7 +797,7 @@ function saveOne(d,meta){
     it={id:'p'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),created:new Date().toISOString(),status:'draft',series:'',part:'',...meta};
     LIB.push(it); d._libId=it.id;
   }
-  it.title=d.hook; it.post=d.post; it.date=d._date||''; FIELDS.forEach(f=>it[f]=d[f]);
+  it.title=d.hook; it.post=d.post; it.date=d._date||''; it.label=d._label||((state.series.length>1&&hasNumbering(els.author.value))?defaultLabel(d):'');  // a numbered series name is remembered per post FIELDS.forEach(f=>it[f]=d[f]);
   if(meta&&meta.series){it.series=meta.series;it.part=meta.part}  // keep the series label when a series post is re-saved on its own
   if(it.status!=='posted') it.status=it.date?'scheduled':'draft';
   return it;
@@ -746,7 +819,7 @@ $('saveAllBtn').addEventListener('click',()=>{
 
 function openItem(it){
   const d={post:it.post,_date:it.date,_libId:it.id,models:null};
-  FIELDS.forEach(f=>d[f]=it[f]); d.key_points=d.key_points||[]; d.stat_value=d.stat_value||''; d.stat_label=d.stat_label||'';
+  FIELDS.forEach(f=>d[f]=it[f]); if(it.label) d._label=it.label; d.key_points=d.key_points||[]; d.stat_value=d.stat_value||''; d.stat_label=d.stat_label||'';
   state.series=[d]; state.seriesTitle=''; state.idx=0; state.data=d;
   showResult(true); renderTabs(); applyAi(); renderSlides();
 }
@@ -806,7 +879,7 @@ $('libImportFile').addEventListener('change',async e=>{
       if(!x||typeof x.post!=='string'||!x.post.trim()) return;
       const it={id:String(x.id||('p'+Date.now().toString(36)+Math.random().toString(36).slice(2,6))),created:x.created||new Date().toISOString(),
         title:String(x.title||x.hook||''),post:x.post,date:/^\d{4}-\d{2}-\d{2}$/.test(x.date||'')?x.date:'',
-        status:STATUS_LABEL[x.status]?x.status:'draft',series:String(x.series||''),part:String(x.part||'')};
+        status:STATUS_LABEL[x.status]?x.status:'draft',series:String(x.series||''),part:String(x.part||''),label:String(x.label||'')};
       FIELDS.forEach(k=>it[k]=x[k]!==undefined?x[k]:(k==='key_points'?[]:''));
       const i=LIB.findIndex(y=>y.id===it.id); if(i>=0)LIB[i]=it; else LIB.push(it); n++;
     });
@@ -843,6 +916,132 @@ $('libIcs').addEventListener('click',()=>{
   downloadBlob(buildIcs(items,$('icsTime').value),'post-studio-reminders.ics','text/calendar');
   toast(`${items.length} reminder${items.length>1?'s':''} downloaded. Open the file to add them to your calendar.`);
 });
+/* ============ PER-POST NAME, SHUFFLE, BULK ILLUSTRATIONS ============ */
+let lblTimer;
+$('postLabel').addEventListener('input',()=>{
+  const d=state.data; if(!d) return; const v=$('postLabel').value;
+  if(v.trim()) d._label=v; else delete d._label;
+  clearTimeout(lblTimer); lblTimer=setTimeout(renderSlides,250);
+});
+$('numberLabels').addEventListener('click',()=>{
+  const base=els.author.value.trim(); if(!base) return toast('Type your name in the left panel first.');
+  if(hasNumbering(base)) return toast('Your name already counts up by itself: Part 1, Part 2, Part 3…');
+  const n=state.series.length; state.series.forEach((p,i)=>{p._label=`${base} · Part ${i+1} of ${n}`});
+  showResult(false); renderSlides(); toast('Part numbers added to the names');
+});
+$('clearLabels').addEventListener('click',()=>{state.series.forEach(p=>{delete p._label}); showResult(false); renderSlides(); toast('Every post uses the default name')});
+$('shuffleBtn').addEventListener('click',()=>{
+  const d=state.data; if(!d) return;
+  const pick=a=>a[Math.floor(Math.random()*a.length)];
+  const cur=document.querySelector('input[name=theme]:checked').value;
+  document.querySelector(`input[name=theme][value=${pick(Object.keys(THEMES).filter(x=>x!==cur))}]`).checked=true;
+  d._cover=pick(['top','bottom','inset'].filter(x=>x!==(d._cover||'top'))); d._swap=Math.random()<.5;
+  renderSlides();
+});
+$('allAiBtn').addEventListener('click',async()=>{
+  const todo=state.series.filter(p=>!p._ai); if(!todo.length) return toast('Every post already has an illustration.');
+  $('allAiBtn').disabled=true;
+  try{for(let i=0;i<todo.length;i++){setStatus(`Creating illustration ${i+1} of ${todo.length}…`); await fetchAiImage(todo[i],true)} setStatus('')}
+  finally{$('allAiBtn').disabled=false}
+});
+/* ============ SAVE COMPLETE POST: .zip or straight into a folder ============ */
+const te=new TextEncoder();
+const CRC_T=(()=>{const t=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;t[n]=c>>>0}return t})();
+function crc32(u8){let c=0xFFFFFFFF;for(let i=0;i<u8.length;i++)c=CRC_T[(c^u8[i])&255]^(c>>>8);return (c^0xFFFFFFFF)>>>0}
+/* minimal .zip writer (no compression: PNG/PDF are already compressed), UTF-8 file names */
+function makeZip(files){
+  const parts=[],central=[]; let offset=0;
+  const now=new Date(), dt=((now.getFullYear()-1980)<<9)|((now.getMonth()+1)<<5)|now.getDate(), tm=(now.getHours()<<11)|(now.getMinutes()<<5)|(now.getSeconds()>>1);
+  for(const f of files){
+    const name=te.encode(f.path), crc=crc32(f.data), size=f.data.length;
+    const lh=new DataView(new ArrayBuffer(30));
+    lh.setUint32(0,0x04034b50,true); lh.setUint16(4,20,true); lh.setUint16(6,0x0800,true); lh.setUint16(8,0,true);
+    lh.setUint16(10,tm,true); lh.setUint16(12,dt,true); lh.setUint32(14,crc,true); lh.setUint32(18,size,true); lh.setUint32(22,size,true);
+    lh.setUint16(26,name.length,true); lh.setUint16(28,0,true);
+    parts.push(new Uint8Array(lh.buffer),name,f.data);
+    const ch=new DataView(new ArrayBuffer(46));
+    ch.setUint32(0,0x02014b50,true); ch.setUint16(4,20,true); ch.setUint16(6,20,true); ch.setUint16(8,0x0800,true); ch.setUint16(10,0,true);
+    ch.setUint16(12,tm,true); ch.setUint16(14,dt,true); ch.setUint32(16,crc,true); ch.setUint32(20,size,true); ch.setUint32(24,size,true);
+    ch.setUint16(28,name.length,true); ch.setUint32(42,offset,true);
+    central.push(new Uint8Array(ch.buffer),name);
+    offset+=30+name.length+size;
+  }
+  const cdSize=central.reduce((a,x)=>a+x.length,0), end=new DataView(new ArrayBuffer(22));
+  end.setUint32(0,0x06054b50,true); end.setUint16(8,files.length,true); end.setUint16(10,files.length,true); end.setUint32(12,cdSize,true); end.setUint32(16,offset,true);
+  return new Blob([...parts,...central,new Uint8Array(end.buffer)],{type:'application/zip'});
+}
+const safeName=(s,max=60)=>String(s||'').replace(/[\\/:*?"<>|\u0000-\u001f]/g,' ').replace(/\s+/g,' ').trim().slice(0,max).replace(/[. ]+$/,'')||'post';
+const slug=s=>safeName(s,30).toLowerCase().replace(/\s+/g,'-');
+async function canvasBytes(cv){const b=await new Promise(r=>cv.toBlob(r,'image/png'));return new Uint8Array(await b.arrayBuffer())}
+function pdfBytes(slides){
+  if(!window.jspdf) return null;
+  const {jsPDF}=window.jspdf, pdf=new jsPDF({orientation:'portrait',unit:'px',format:[W,H],compress:true});
+  slides.forEach(([,cv],i)=>{if(i)pdf.addPage([W,H],'portrait');pdf.addImage(cv.toDataURL('image/jpeg',0.92),'JPEG',0,0,W,H)});
+  return new Uint8Array(pdf.output('arraybuffer'));
+}
+async function fontsReady(){try{await Promise.all([`800 40px "Bricolage Grotesque"`,`700 40px "Bricolage Grotesque"`,`500 40px "DM Sans"`,`700 40px "DM Sans"`].map(f=>document.fonts.load(f)))}catch(e){}}
+function detailsText(d,idx,total){
+  const L=[]; if(total>1) L.push(`Series: ${state.seriesTitle} (post ${idx+1} of ${total})`);
+  L.push(`Headline: ${d.hook||''}`); if(d._date) L.push(`Planned date: ${d._date}`);
+  const nm=labelFor(d); if(nm) L.push(`Name on graphics: ${nm}`);
+  L.push('Files: post.txt is the LinkedIn text. slide-*.png are the carousel slides'+(window.jspdf?', carousel.pdf is the same slides as one PDF':'')+(d._ai?', and illustration is the cover picture':'')+'.');
+  return L.join('\n')+'\n';
+}
+async function postFiles(d,idx,total){
+  const files=[{name:'post.txt',data:te.encode(String(d.post||'').replace(/\s+$/,'')+'\n')},{name:'details.txt',data:te.encode(detailsText(d,idx,total))}];
+  const list=buildSlideList(d,d._ai?d._ai.img:null);
+  for(let k=0;k<list.length;k++) files.push({name:`slide-${k+1}-${slug(list[k][0])}.png`,data:await canvasBytes(list[k][1])});
+  const pdf=pdfBytes(list); if(pdf) files.push({name:'carousel.pdf',data:pdf});
+  if(d._ai&&d._ai.src){try{files.push({name:`illustration.${d._ai.ext||'png'}`,data:new Uint8Array(await (await fetch(d._ai.src)).arrayBuffer())})}catch(e){}}
+  return files;
+}
+function folderFor(d,idx,total,multiExport){
+  if(multiExport) return `${String(idx+1).padStart(2,'0')} - ${safeName(d.hook,50)}`;
+  return (total>1?`Part ${idx+1} - `:'')+safeName(d.hook,50);
+}
+let exporting=false;
+const EXPORT_BTNS=['dlPostZip','dlPostDir','dlSeriesZip','dlSeriesDir'];
+async function exportPosts(posts,mode){
+  posts=(posts||[]).filter(Boolean); if(exporting||!posts.length) return;
+  const n=posts.length, multi=n>1, total=state.series.length||1;
+  let root=null;
+  if(mode==='dir'){   // must run straight from the click, before any waiting
+    try{root=await window.showDirectoryPicker({mode:'readwrite'})}
+    catch(e){ if(e&&e.name==='AbortError') return; return toast('Could not open that folder. Use the .zip instead.') }
+  }
+  exporting=true; EXPORT_BTNS.forEach(id=>$(id).disabled=true);
+  try{
+    if(state.data) state.data.post=els.postText.value;
+    await fontsReady();
+    const topName=multi?safeName(state.seriesTitle||'Series',60):'';
+    const topDir=(root&&multi)?await root.getDirectoryHandle(topName,{create:true}):root;
+    const zipFiles=[]; let lastFolder='';
+    for(let i=0;i<n;i++){
+      setStatus(multi?`Preparing post ${i+1} of ${n}…`:'Preparing your post…');
+      const d=posts[i], at=state.series.indexOf(d), idx=at<0?0:at;
+      const folder=folderFor(d,multi?i:idx,multi?n:total,multi); lastFolder=folder;
+      const files=await postFiles(d,idx,total);
+      if(root){
+        const dir=await topDir.getDirectoryHandle(folder,{create:true});
+        for(const f of files){const fh=await dir.getFileHandle(f.name,{create:true});const w=await fh.createWritable();await w.write(f.data);await w.close()}
+      }else files.forEach(f=>zipFiles.push({path:(multi?topName+'/':'')+folder+'/'+f.name,data:f.data}));
+      await new Promise(r=>setTimeout(r,0));   // let the page breathe between posts
+    }
+    setStatus('');
+    if(root) toast(multi?`Saved ${n} posts into “${topName}” in the folder you chose.`:`Saved “${lastFolder}” in the folder you chose.`);
+    else{
+      const u=URL.createObjectURL(makeZip(zipFiles)); downloadUrl(u,(multi?topName:lastFolder)+'.zip'); setTimeout(()=>URL.revokeObjectURL(u),5000);
+      toast(multi?`${n} posts downloaded as one .zip`:'Post downloaded as a .zip');
+    }
+  }catch(e){setStatus('Could not prepare the download: '+(e&&e.message||e),true)}
+  finally{exporting=false; EXPORT_BTNS.forEach(id=>$(id).disabled=false)}
+}
+$('dlPostZip').addEventListener('click',()=>exportPosts([state.data],'zip'));
+$('dlPostDir').addEventListener('click',()=>exportPosts([state.data],'dir'));
+$('dlSeriesZip').addEventListener('click',()=>exportPosts(state.series,'zip'));
+$('dlSeriesDir').addEventListener('click',()=>exportPosts(state.series,'dir'));
+if(window.showDirectoryPicker){$('dlPostDir').hidden=false;$('dlSeriesDir').hidden=false}
+else document.querySelectorAll('.dirhint').forEach(e=>e.hidden=false);
 renderLib();
 </script>
 </body>
