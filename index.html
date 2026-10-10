@@ -94,6 +94,30 @@ details > div{margin-top:10px}
 #aiNote{font-size:.8125rem;color:var(--muted);margin:10px 0 0}
 .toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 16px;border-radius:10px;font-size:.875rem;opacity:0;pointer-events:none;transition:opacity .2s}
 .toast.on{opacity:1}
+input[type=date],input[type=time]{padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);font:inherit}
+.tabs{display:flex;gap:6px;flex-wrap:wrap}
+.tab,.chip{border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:999px;padding:6px 12px;font:inherit;font-size:.8125rem;cursor:pointer}
+.tab:hover,.chip:hover{background:#F2F5F8}
+.tab.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.tab:focus-visible,.chip:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.inline{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.inline input[type=text]{flex:1;min-width:200px}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.improve{margin-top:16px;padding-top:14px;border-top:1px solid var(--line)}
+.seriesrow{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px}
+.seriesrow label{margin:0;font-weight:500;font-size:.8125rem}
+.seriesrow select{width:auto;padding:8px 10px}
+.libitem{display:grid;gap:8px;border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-top:10px;background:#fff}
+.libitem.due{border-color:var(--hi);box-shadow:inset 4px 0 0 var(--hi)}
+.libitem.posted{opacity:.6}
+.libtitle{font-weight:700}
+.libmeta{color:var(--muted);font-size:.8125rem}
+.libprev{color:var(--muted);font-size:.875rem;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;white-space:pre-line}
+.libctl{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.libctl select{width:auto;padding:6px 8px}
+.btn.danger{color:var(--err)}
+label.btn{margin:0}
+.panel h2.sec small{font-family:var(--body);font-weight:500;font-size:.8125rem;color:var(--muted)}
 [hidden]{display:none!important}
 </style>
 </head>
@@ -139,6 +163,17 @@ details > div{margin-top:10px}
         <div class="field">
           <label for="pasteText">Or paste text</label>
           <textarea id="pasteText" placeholder="Paste an article, notes or a transcript. Ignored if a file is chosen."></textarea>
+        </div>
+
+        <div class="field">
+          <label for="postCount">What to create</label>
+          <select id="postCount">
+            <option value="1">A single post</option>
+            <option value="3">A series of 3 connected posts</option>
+            <option value="5">A series of 5 connected posts</option>
+            <option value="7">A series of 7 connected posts</option>
+          </select>
+          <p class="hint">A series is one storyline: an introduction, deep dives, then a wrap-up. Each post also works on its own.</p>
         </div>
 
         <div class="field">
@@ -195,6 +230,18 @@ details > div{margin-top:10px}
       </div>
 
       <div id="result" hidden>
+        <section class="panel" id="seriesPanel" aria-labelledby="seriesTitle" hidden>
+          <h2 class="sec"><span id="seriesTitle"></span></h2>
+          <div class="tabs" id="seriesTabs" role="tablist" aria-label="Posts in the series"></div>
+          <div class="seriesrow">
+            <label for="seriesStart">First post on</label><input type="date" id="seriesStart">
+            <label for="seriesGap">then</label>
+            <select id="seriesGap"><option value="1">every day</option><option value="2" selected>every 2 days</option><option value="3">every 3 days</option><option value="7">every week</option></select>
+            <button class="btn" id="saveAllBtn" type="button">Save all to library</button>
+          </div>
+          <p class="hint">Leave the date empty to save them as drafts. Dates make them appear in your calendar reminders.</p>
+        </section>
+
         <section class="panel" aria-labelledby="postHd">
           <h2 class="sec" id="postHd">Post draft</h2>
           <div class="li">
@@ -208,6 +255,25 @@ details > div{margin-top:10px}
           <div class="bar">
             <span id="count"></span>
             <button class="btn ghost" id="copyBtn" type="button">Copy post</button>
+          </div>
+          <div class="improve">
+            <label for="improveText">Improve this post</label>
+            <div class="inline">
+              <input type="text" id="improveText" placeholder="e.g. shorter, add a personal story, stronger hook" maxlength="300">
+              <button class="btn ghost" id="improveBtn" type="button">Rewrite</button>
+              <button class="btn ghost" id="undoBtn" type="button" hidden>Undo rewrite</button>
+            </div>
+            <div class="chips" id="chips">
+              <button class="chip" type="button" data-q="Make it about 30% shorter and keep the key points">Shorter</button>
+              <button class="chip" type="button" data-q="Rewrite the hook to be sharper and more surprising">Stronger hook</button>
+              <button class="chip" type="button" data-q="Add a short, relatable story or example near the start">More story</button>
+              <button class="chip" type="button" data-q="Use simpler, everyday words and shorter sentences">Simpler words</button>
+              <button class="chip" type="button" data-q="Make the tone more direct and confident">More direct</button>
+            </div>
+          </div>
+          <div class="bar" style="margin-top:16px">
+            <span class="inline"><label for="planDate" style="margin:0;font-weight:500">Plan to post on</label><input type="date" id="planDate"></span>
+            <button class="btn" id="saveBtn" type="button">Save to library</button>
           </div>
         </section>
 
@@ -231,6 +297,21 @@ details > div{margin-top:10px}
       </div>
     </div>
   </div>
+
+  <section class="panel" id="library" aria-labelledby="libHd" style="margin-top:24px">
+    <h2 class="sec" id="libHd"><span>Saved posts <small id="libCount"></small></span>
+      <span class="inline">
+        <button class="btn ghost" id="libIcs" type="button">Calendar reminders (.ics)</button>
+        <span class="inline" style="gap:4px"><label for="icsTime" style="margin:0;font-weight:500;font-size:.8125rem">at</label><input type="time" id="icsTime" value="09:00"></span>
+        <button class="btn ghost" id="libExport" type="button">Export backup</button>
+        <label class="btn ghost" for="libImportFile">Import backup</label>
+        <input type="file" id="libImportFile" accept=".json,application/json" hidden>
+      </span>
+    </h2>
+    <p class="hint" id="libDue" hidden style="color:var(--err);font-weight:700"></p>
+    <p class="hint">Saved in this browser only, so use Export backup to keep a copy or move to another device. Posts are not sent to LinkedIn for you: copy a post and paste it into LinkedIn (its composer has a "Schedule for later" clock), or import the reminders file into your calendar.</p>
+    <div id="libList"></div>
+  </section>
 </div>
 <div class="toast" id="toast" role="status"></div>
 
@@ -251,7 +332,7 @@ const els = {
   gallery:$('gallery'), aiWrap:$('aiWrap'), aiImg:$('aiImg'), aiNote:$('aiNote'), retryAi:$('retryAi'),
   avatar:$('avatar'), liName:$('liName')
 };
-let state = { data:null, aiImage:null, slides:[] };
+let state = { data:null, aiImage:null, slides:[], series:[], idx:0, seriesTitle:'' };
 
 function toast(msg){const t=$('toast');t.textContent=msg;t.classList.add('on');clearTimeout(toast._t);toast._t=setTimeout(()=>t.classList.remove('on'),2200)}
 function setStatus(msg,isError=false){
@@ -345,28 +426,16 @@ els.gen.addEventListener('click',async()=>{
   els.gen.disabled=true;
   try{
     await wakeServer();
+    const count=+$('postCount').value||1;
     const build=()=>{const fd=new FormData();
       fd.append('file',file); fd.append('token',token);
       fd.append('tone',els.tone.value); fd.append('tag_names',els.tags.value);
-      fd.append('notes',els.notes.value); return fd};
-    let data;
-    for(let attempt=1;;attempt++){
-      setStatus(attempt===1?'Reading your source and writing the post…':'The AI was busy. Trying again automatically…');
-      try{ data=await request(backendBase()+'/api/generate',{method:'POST',body:build()},240000); break }
-      catch(e){
-        if(attempt<3 && [429,502,503,504].includes(e.status) && !/password|API key|Unsupported|too large|empty/i.test(e.message)){
-          setStatus('The AI is busy. Waiting a few seconds, then trying again…');
-          await new Promise(r=>setTimeout(r,8000*attempt)); continue;
-        }
-        throw e;
-      }
-    }
-
-    state.data=data; state.aiImage=null;
-    showResult();
-    await renderSlides();
+      fd.append('notes',els.notes.value); fd.append('count',count); return fd};
+    const data=await callApi('/api/generate',build,240000,
+      count>1?`Reading your source and writing ${count} connected posts…`:'Reading your source and writing the post…');
+    await loadResult(data);
     setStatus('');
-    if(els.wantAi.checked) await fetchAiImage(); 
+    if(els.wantAi.checked) await fetchAiImage();
   }catch(e){
     setStatus(e.message,true);
   }finally{
@@ -374,31 +443,66 @@ els.gen.addEventListener('click',async()=>{
   }
 });
 
+/* One API call with automatic retries when the AI is busy */
+async function callApi(path,build,timeout,firstMsg){
+  for(let attempt=1;;attempt++){
+    setStatus(attempt===1?firstMsg:'The AI was busy. Trying again automatically…');
+    try{ return await request(backendBase()+path,{method:'POST',body:build()},timeout) }
+    catch(e){
+      if(attempt<3 && [429,502,503,504].includes(e.status) && !/password|API key|Unsupported|too large|empty/i.test(e.message)){
+        setStatus('The AI is busy. Waiting a few seconds, then trying again…');
+        await new Promise(r=>setTimeout(r,8000*attempt)); continue;
+      }
+      throw e;
+    }
+  }
+}
+
+async function loadResult(data){
+  if(Array.isArray(data.posts)){state.series=data.posts;state.seriesTitle=data.series_title||'Series'}
+  else{state.series=[data];state.seriesTitle=''}
+  state.idx=0; state.data=state.series[0]; state.aiImage=null;
+  showResult(true); renderTabs(); applyAi();
+  await renderSlides();
+}
+
+/* ============ AI ILLUSTRATION (one per post) ============ */
+function applyAi(){
+  const d=state.data; els.aiNote.hidden=true;
+  if(d&&d._ai){
+    state.aiImage=d._ai.img; state.aiExt=d._ai.ext; els.aiImg.src=d._ai.src; els.aiWrap.hidden=false; els.retryAi.hidden=true;
+    if(d._ai.note){els.aiNote.textContent=d._ai.note;els.aiNote.hidden=false}
+  }else{
+    state.aiImage=null; els.aiWrap.hidden=true; els.retryAi.hidden=false; els.retryAi.textContent='Create AI illustration for this post';
+  }
+}
 async function fetchAiImage(){
+  const d=state.data; if(!d) return;
   els.retryAi.hidden=true; els.aiNote.hidden=true;
   setStatus('Creating the AI illustration…');
   try{
     const fd=new FormData();
-    fd.append('token',els.token.value); fd.append('prompt',state.data.image_prompt||state.data.hook);
+    fd.append('token',els.token.value); fd.append('prompt',d.image_prompt||d.hook);
     const r=await request(backendBase()+'/api/image',{method:'POST',body:fd},180000);
     const src=`data:${r.mime};base64,${r.image_b64}`;
     const img=new Image();
     await new Promise((ok,no)=>{img.onload=ok;img.onerror=no;img.src=src});
-    state.aiImage=img; state.aiExt=(r.mime||'').includes('svg')?'svg':(r.mime||'').includes('jpeg')?'jpg':'png';
-    els.aiImg.src=src; els.aiWrap.hidden=false;
-    if(r.kind==='svg'){els.aiNote.textContent='Image models are not included in your Gemini plan, so this illustration was drawn as vector art. It works the same in the carousel.';els.aiNote.hidden=false}
-    await renderSlides();
+    d._ai={src,img,ext:(r.mime||'').includes('svg')?'svg':(r.mime||'').includes('jpeg')?'jpg':'png',
+      note:r.kind==='svg'?'Image models are not included in your Gemini plan, so this illustration was drawn as vector art. It works the same in the carousel.':''};
     setStatus('');
+    if(state.data===d){applyAi(); await renderSlides()}
   }catch(e){
     setStatus('');
-    els.aiWrap.hidden=true;
-    els.aiNote.textContent='AI illustration unavailable: '+e.message+' The carousel graphics above are unaffected.';
-    els.aiNote.hidden=false; els.retryAi.hidden=false;
+    if(state.data===d){
+      state.aiImage=null; els.aiWrap.hidden=true;
+      els.aiNote.textContent='AI illustration unavailable: '+e.message+' The carousel graphics above are unaffected.';
+      els.aiNote.hidden=false; els.retryAi.hidden=false; els.retryAi.textContent='Try AI illustration again';
+    }
   }
 }
 els.retryAi.addEventListener('click',fetchAiImage);
 
-function showResult(){
+function showResult(scroll=true){
   const d=state.data;
   els.empty.hidden=true; els.result.hidden=false;
   els.postText.value=d.post;
@@ -407,8 +511,10 @@ function showResult(){
   mu.hidden=!m.writer;
   const name=els.author.value.trim()||'Your name';
   els.liName.textContent=name; els.avatar.textContent=name[0].toUpperCase();
+  $('postHd').textContent=state.series.length>1?`Post ${state.idx+1} of ${state.series.length}`:'Post draft';
+  $('planDate').value=d._date||''; $('undoBtn').hidden=!d._undo;
   updateCount(); autoGrow();
-  els.result.scrollIntoView({behavior:'smooth',block:'start'});
+  if(scroll) els.result.scrollIntoView({behavior:'smooth',block:'start'});
 }
 function updateCount(){
   const n=els.postText.value.length;
@@ -416,7 +522,7 @@ function updateCount(){
   els.count.classList.toggle('warn',n>3000);
 }
 function autoGrow(){els.postText.style.height='auto';els.postText.style.height=Math.max(340,els.postText.scrollHeight)+'px'}
-els.postText.addEventListener('input',()=>{updateCount();autoGrow()});
+els.postText.addEventListener('input',()=>{updateCount();autoGrow();if(state.data)state.data.post=els.postText.value});
 $('copyBtn').addEventListener('click',async()=>{
   try{await navigator.clipboard.writeText(els.postText.value);toast('Post copied')}
   catch(e){els.postText.select();document.execCommand('copy');toast('Post copied')}
@@ -552,6 +658,192 @@ $('pdfBtn').addEventListener('click',()=>{
   state.slides.forEach(([,cv],i)=>{if(i)pdf.addPage([W,H],'portrait');pdf.addImage(cv.toDataURL('image/jpeg',0.92),'JPEG',0,0,W,H)});
   pdf.save('linkedin-carousel.pdf');
 });
+
+/* ============ SERIES TABS ============ */
+const shorten=(t,n)=>{t=String(t||'');return t.length>n?t.slice(0,n-1)+'…':t};
+function renderTabs(){
+  const multi=state.series.length>1; $('seriesPanel').hidden=!multi; if(!multi) return;
+  $('seriesTitle').textContent=`${state.seriesTitle} · ${state.series.length} posts`;
+  const box=$('seriesTabs'); box.replaceChildren();
+  state.series.forEach((p,i)=>{
+    const b=document.createElement('button'); b.type='button'; b.className='tab'+(i===state.idx?' on':'');
+    b.setAttribute('role','tab'); b.setAttribute('aria-selected',String(i===state.idx));
+    b.textContent=`${i+1}. ${shorten(p.hook,26)}`;
+    b.addEventListener('click',()=>selectPost(i)); box.append(b);
+  });
+}
+function selectPost(i){
+  if(state.data) state.data.post=els.postText.value;
+  state.idx=i; state.data=state.series[i];
+  showResult(false); renderTabs(); applyAi(); renderSlides();
+}
+
+/* ============ IMPROVE (rewrite one post) ============ */
+const SNAP=['post','hook','key_points','stat_value','stat_label','closing_question','image_prompt'];
+async function improve(instr){
+  instr=(instr||$('improveText').value).trim();
+  if(!instr) return toast('Type what to change, or tap a quick option.');
+  const d=state.data; d.post=els.postText.value;
+  const snap={}; SNAP.forEach(k=>snap[k]=d[k]);
+  $('improveBtn').disabled=true;
+  try{
+    const r=await callApi('/api/refine',()=>{const fd=new FormData();
+      fd.append('token',els.token.value); fd.append('post',d.post);
+      fd.append('instruction',instr); fd.append('tag_names',els.tags.value); return fd},120000,'Rewriting this post…');
+    SNAP.forEach(k=>{if(r[k]!==undefined)d[k]=r[k]}); d.models=r.models||d.models; d._undo=snap;
+    $('improveText').value=''; setStatus('');
+    if(state.data===d){showResult(false); renderTabs(); await renderSlides()}
+    toast('Post rewritten');
+  }catch(e){setStatus(e.message,true)}
+  finally{$('improveBtn').disabled=false}
+}
+$('improveBtn').addEventListener('click',()=>improve());
+$('improveText').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();improve()}});
+document.querySelectorAll('#chips .chip').forEach(c=>c.addEventListener('click',()=>improve(c.dataset.q)));
+$('undoBtn').addEventListener('click',async()=>{
+  const d=state.data; if(!d||!d._undo) return;
+  SNAP.forEach(k=>d[k]=d._undo[k]); d._undo=null;
+  showResult(false); renderTabs(); await renderSlides(); toast('Rewrite undone');
+});
+
+/* ============ LIBRARY (saved in this browser) ============ */
+const LIB_KEY='ps_library_v1';
+const FIELDS=['hook','key_points','stat_value','stat_label','closing_question','image_prompt'];
+let LIB=(function(){try{const a=JSON.parse(localStorage.getItem(LIB_KEY)||'[]');return Array.isArray(a)?a:[]}catch(e){return []}})();
+function persist(){try{localStorage.setItem(LIB_KEY,JSON.stringify(LIB));return true}
+  catch(e){toast('This browser blocked saving. Use Export backup to keep your posts.');return false}}
+const pad=n=>String(n).padStart(2,'0');
+const ymd=dt=>`${dt.getFullYear()}-${pad(dt.getMonth()+1)}-${pad(dt.getDate())}`;
+const today=()=>ymd(new Date());
+function addDays(s,n){const [y,m,d]=s.split('-').map(Number);return ymd(new Date(y,m-1,d+n))}
+function seriesMeta(i){return state.series.length>1?{series:state.seriesTitle,part:`${i+1}/${state.series.length}`}:{series:'',part:''}}
+
+function saveOne(d,meta){
+  let it=d._libId&&LIB.find(x=>x.id===d._libId);
+  if(!it){
+    it={id:'p'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),created:new Date().toISOString(),status:'draft',series:'',part:'',...meta};
+    LIB.push(it); d._libId=it.id;
+  }
+  it.title=d.hook; it.post=d.post; it.date=d._date||''; FIELDS.forEach(f=>it[f]=d[f]);
+  if(meta&&meta.series){it.series=meta.series;it.part=meta.part}  // keep the series label when a series post is re-saved on its own
+  if(it.status!=='posted') it.status=it.date?'scheduled':'draft';
+  return it;
+}
+$('planDate').addEventListener('change',()=>{if(state.data)state.data._date=$('planDate').value});
+$('saveBtn').addEventListener('click',()=>{
+  if(!state.data) return;
+  state.data.post=els.postText.value; state.data._date=$('planDate').value;
+  saveOne(state.data,seriesMeta(state.idx)); if(persist()){renderLib();toast('Saved to your library')}
+});
+$('saveAllBtn').addEventListener('click',()=>{
+  if(!state.series.length) return;
+  state.data.post=els.postText.value;
+  const start=$('seriesStart').value, gap=+$('seriesGap').value||2;
+  state.series.forEach((p,i)=>{if(start)p._date=addDays(start,i*gap); saveOne(p,seriesMeta(i))});
+  $('planDate').value=state.data._date||'';
+  if(persist()){renderLib();toast(`${state.series.length} posts saved`+(start?' and scheduled':' as drafts'));$('library').scrollIntoView({behavior:'smooth',block:'start'})}
+});
+
+function openItem(it){
+  const d={post:it.post,_date:it.date,_libId:it.id,models:null};
+  FIELDS.forEach(f=>d[f]=it[f]); d.key_points=d.key_points||[]; d.stat_value=d.stat_value||''; d.stat_label=d.stat_label||'';
+  state.series=[d]; state.seriesTitle=''; state.idx=0; state.data=d;
+  showResult(true); renderTabs(); applyAi(); renderSlides();
+}
+async function copyText(t){
+  try{await navigator.clipboard.writeText(t);toast('Post copied')}
+  catch(e){const ta=document.createElement('textarea');ta.value=t;document.body.append(ta);ta.select();document.execCommand('copy');ta.remove();toast('Post copied')}
+}
+const STATUS_LABEL={draft:'Draft',scheduled:'Scheduled',posted:'Posted'};
+function libSort(a,b){
+  const pa=a.status==='posted',pb=b.status==='posted'; if(pa!==pb) return pa?1:-1;
+  if(a.date!==b.date){if(!a.date) return 1; if(!b.date) return -1; return a.date<b.date?-1:1}
+  return (a.created||'')<(b.created||'')?-1:1;
+}
+function mk(tag,cls,text){const e=document.createElement(tag);if(cls)e.className=cls;if(text!==undefined)e.textContent=text;return e}
+function renderLib(){
+  const box=$('libList'); box.replaceChildren();
+  const items=[...LIB].sort(libSort), t=today();
+  $('libCount').textContent=items.length?`${items.length} saved`:'';
+  const due=items.filter(x=>x.date&&x.date<=t&&x.status!=='posted').length;
+  $('libDue').hidden=!due; $('libDue').textContent=due?`${due} post${due>1?'s are':' is'} due to be posted.`:'';
+  if(!items.length){box.append(mk('p','hint','Nothing saved yet. Use "Save to library" under a post.'));return}
+  items.forEach(it=>{
+    const isDue=it.date&&it.date<=t&&it.status!=='posted';
+    const row=mk('div','libitem'+(isDue?' due':'')+(it.status==='posted'?' posted':''));
+    row.append(mk('div','libtitle',it.title||'(untitled)'));
+    const meta=[it.series,it.part&&`Part ${it.part}`,STATUS_LABEL[it.status]].filter(Boolean).join(' · ');
+    row.append(mk('div','libmeta',meta));
+    row.append(mk('div','libprev',it.post));
+    const ctl=mk('div','libctl');
+    const date=document.createElement('input'); date.type='date'; date.value=it.date||''; date.setAttribute('aria-label','Planned date');
+    date.addEventListener('change',()=>{it.date=date.value; if(it.status!=='posted')it.status=it.date?'scheduled':'draft'; persist(); renderLib()});
+    const st=document.createElement('select'); st.setAttribute('aria-label','Status');
+    Object.entries(STATUS_LABEL).forEach(([v,l])=>{const o=document.createElement('option');o.value=v;o.textContent=l;if(v===it.status)o.selected=true;st.append(o)});
+    st.addEventListener('change',()=>{it.status=st.value; persist(); renderLib()});
+    const open=mk('button','btn ghost','Open'); open.type='button'; open.addEventListener('click',()=>openItem(it));
+    const copy=mk('button','btn ghost','Copy post'); copy.type='button'; copy.addEventListener('click',()=>copyText(it.post));
+    const del=mk('button','btn ghost danger','Delete'); del.type='button';
+    del.addEventListener('click',()=>{if(confirm('Delete this saved post?')){LIB=LIB.filter(x=>x.id!==it.id);persist();renderLib()}});
+    ctl.append(date,st,open,copy,del); row.append(ctl); box.append(row);
+  });
+}
+
+function downloadBlob(text,name,type){
+  const u=URL.createObjectURL(new Blob([text],{type})); downloadUrl(u,name); setTimeout(()=>URL.revokeObjectURL(u),2000);
+}
+$('libExport').addEventListener('click',()=>{
+  if(!LIB.length) return toast('Nothing to export yet.');
+  downloadBlob(JSON.stringify({app:'post-studio',version:1,exported:new Date().toISOString(),items:LIB},null,2),`post-studio-backup-${today()}.json`,'application/json');
+});
+$('libImportFile').addEventListener('change',async e=>{
+  const f=e.target.files[0]; e.target.value=''; if(!f) return;
+  try{
+    const j=JSON.parse(await f.text()); const arr=Array.isArray(j)?j:j.items;
+    if(!Array.isArray(arr)) throw new Error('bad');
+    let n=0;
+    arr.forEach(x=>{
+      if(!x||typeof x.post!=='string'||!x.post.trim()) return;
+      const it={id:String(x.id||('p'+Date.now().toString(36)+Math.random().toString(36).slice(2,6))),created:x.created||new Date().toISOString(),
+        title:String(x.title||x.hook||''),post:x.post,date:/^\d{4}-\d{2}-\d{2}$/.test(x.date||'')?x.date:'',
+        status:STATUS_LABEL[x.status]?x.status:'draft',series:String(x.series||''),part:String(x.part||'')};
+      FIELDS.forEach(k=>it[k]=x[k]!==undefined?x[k]:(k==='key_points'?[]:''));
+      const i=LIB.findIndex(y=>y.id===it.id); if(i>=0)LIB[i]=it; else LIB.push(it); n++;
+    });
+    persist(); renderLib(); toast(n?`Imported ${n} post${n>1?'s':''}`:'No posts found in that file');
+  }catch(err){toast('That file is not a Post Studio backup.')}
+});
+
+/* calendar reminders (.ics): one event per planned, not-yet-posted post */
+const icsEsc=t=>String(t).replace(/\\/g,'\\\\').replace(/;/g,'\\;').replace(/,/g,'\\,').replace(/\r?\n/g,'\\n');
+function icsFold(line){
+  const enc=new TextEncoder(); if(enc.encode(line).length<=75) return line;
+  const out=[]; let cur='',bytes=0;
+  for(const ch of line){const b=enc.encode(ch).length; if(bytes+b>75){out.push(cur);cur=' '+ch;bytes=1+b}else{cur+=ch;bytes+=b}}
+  out.push(cur); return out.join('\r\n');
+}
+function buildIcs(items,time){
+  const [hh,mm]=(time||'09:00').split(':').map(Number);
+  const stamp=new Date().toISOString().replace(/[-:]/g,'').replace(/\.\d{3}/,'');
+  const lines=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Post Studio//EN','CALSCALE:GREGORIAN'];
+  items.forEach(it=>{
+    const day=it.date.replace(/-/g,''), start=`${day}T${pad(hh)}${pad(mm)}00`;
+    const end=new Date(2000,0,1,hh,mm+15), endS=`${day}T${pad(end.getHours())}${pad(end.getMinutes())}00`;
+    const title='Post on LinkedIn: '+(it.title||'')+(it.part?` (Part ${it.part})`:'');
+    lines.push('BEGIN:VEVENT',`UID:${it.id}@post-studio`,`DTSTAMP:${stamp}`,`DTSTART:${start}`,`DTEND:${endS}`,
+      'SUMMARY:'+icsEsc(title),'DESCRIPTION:'+icsEsc(it.post),
+      'BEGIN:VALARM','ACTION:DISPLAY','DESCRIPTION:Time to post','TRIGGER:PT0M','END:VALARM','END:VEVENT');
+  });
+  lines.push('END:VCALENDAR');
+  return lines.map(icsFold).join('\r\n')+'\r\n';
+}
+$('libIcs').addEventListener('click',()=>{
+  const items=LIB.filter(x=>x.date&&x.status!=='posted').sort(libSort);
+  if(!items.length) return toast('Give saved posts a planned date first.');
+  downloadBlob(buildIcs(items,$('icsTime').value),'post-studio-reminders.ics','text/calendar');
+  toast(`${items.length} reminder${items.length>1?'s':''} downloaded. Open the file to add them to your calendar.`);
+});
+renderLib();
 </script>
 </body>
 </html>
