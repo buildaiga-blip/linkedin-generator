@@ -90,13 +90,6 @@ details > div{margin-top:10px}
 .slide canvas{display:block;width:100%;height:auto}
 .slide .bar{margin:0;padding:8px 10px;background:#fff}
 .slide .bar span{font-size:.8125rem;color:var(--muted)}
-.slide.off{opacity:.45}
-.slide .inc{display:inline-flex;align-items:center;gap:4px;font-size:.8125rem;color:var(--muted);cursor:pointer}
-.slide .bar .btn{padding:4px 8px;font-size:.75rem}
-.srcbox{margin-top:12px;font-size:.8125rem;color:var(--muted)}
-.srcbox summary{cursor:pointer;font-weight:700}
-.srclist div{margin:6px 0;line-height:1.4}
-.verline{font-size:.75rem;color:var(--muted);text-align:center;margin:24px 0 8px}
 .ai-img img{display:block;width:100%;height:auto}
 #aiNote{font-size:.8125rem;color:var(--muted);margin:10px 0 0}
 .toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 16px;border-radius:10px;font-size:.875rem;opacity:0;pointer-events:none;transition:opacity .2s}
@@ -254,7 +247,6 @@ label.btn{margin:0}
             <select id="seriesGap"><option value="1">every day</option><option value="2" selected>every 2 days</option><option value="3">every 3 days</option><option value="7">every week</option></select>
             <button class="btn" id="saveAllBtn" type="button">Save all to library</button>
             <button class="btn ghost" id="allAiBtn" type="button">Create illustrations for all posts</button>
-            <button class="btn ghost" id="dlRecap" type="button">Download series recap image</button>
           </div>
           <p class="hint">Leave the date empty to save them as drafts. Dates make them appear in your calendar reminders.</p>
           <div class="exportrow" style="margin-top:12px">
@@ -319,23 +311,14 @@ label.btn{margin:0}
               <input type="text" id="postLabel" maxlength="60" autocomplete="off">
               <p class="hint">Leave empty to use the name from the left panel (its “Part 1” counts up automatically). Type here to give this post its own name.</p>
             </div>
-            <div class="field">
-              <label for="hlWords">Words to highlight on the graphics</label>
-              <input type="text" id="hlWords" maxlength="200" autocomplete="off" placeholder="e.g. 50%, cash flow, 13 weeks">
-              <p class="hint">Separate with commas. They get a marker-style highlight on the slides. Leave empty for none. Each key point also gets a coloured numbered bullet.</p>
-            </div>
             <div class="inline" id="labelBulk" hidden>
               <button class="btn ghost" id="numberLabels" type="button">Add “Part 1 of N” to every post's name</button>
               <button class="btn ghost" id="clearLabels" type="button">Use the same name on all posts</button>
             </div>
             <div class="inline"><button class="btn ghost" id="shuffleBtn" type="button">Shuffle design</button>
-              <span class="hint" style="margin:0">Changes colours and the cover layout. Each slide also has its own “Different design” button.</span></div>
+              <span class="hint" style="margin:0">Changes colours and the cover layout. Text stays the same.</span></div>
           </div>
-          <p class="hint" id="pdfNote" style="margin:0 0 10px"></p>
           <div class="gallery" id="gallery"></div>
-          <details class="srcbox"><summary>What the graphics are built from</summary>
-            <div id="srcList" class="srclist"></div>
-          </details>
           <div id="aiWrap" hidden style="margin-top:16px">
             <div class="slide ai-img">
               <img id="aiImg" alt="AI generated illustration for the post">
@@ -584,17 +567,16 @@ function showResult(scroll=true){
   $('postHd').textContent=state.series.length>1?`Post ${state.idx+1} of ${state.series.length}`:'Post draft';
   $('planDate').value=d._date||''; $('undoBtn').hidden=!d._undo;
   $('postLabel').value=d._label||''; $('postLabel').placeholder=defaultLabel(d)||'Name on graphics';
-  $('hlWords').value=hlFor(d,deriveGfx(d)).join(', ');
   updateCount(); autoGrow();
   if(scroll) els.result.scrollIntoView({behavior:'smooth',block:'start'});
 }
 function updateCount(){
-  const n=[...els.postText.value].length;
+  const n=els.postText.value.length;
   els.count.textContent=`${n.toLocaleString()} / 3,000 characters`;
   els.count.classList.toggle('warn',n>3000);
 }
 function autoGrow(){els.postText.style.height='auto';els.postText.style.height=Math.max(340,els.postText.scrollHeight)+'px'}
-els.postText.addEventListener('input',()=>{updateCount();autoGrow();if(state.data){state.data.post=els.postText.value;scheduleGfx()}});
+els.postText.addEventListener('input',()=>{updateCount();autoGrow();if(state.data)state.data.post=els.postText.value});
 $('copyBtn').addEventListener('click',async()=>{
   try{await navigator.clipboard.writeText(els.postText.value);toast('Post copied')}
   catch(e){els.postText.select();document.execCommand('copy');toast('Post copied')}
@@ -604,64 +586,35 @@ $('copyBtn').addEventListener('click',async()=>{
 const W=1080,H=1350;
 const DISPLAY="'Bricolage Grotesque','Segoe UI',sans-serif", BODY="'DM Sans','Segoe UI',sans-serif";
 const THEMES={
-  paper :{bg:'#F4F6F9',ink:'#0F1B2D',muted:'#5B6B80',accent:'#0A66C2',hi:'#FFC857',card:'#FFFFFF',bul:['#0A66C2','#E8730C','#1B9E6B','#8E44D6']},
-  ink   :{bg:'#0F1B2D',ink:'#F4F6F9',muted:'#9FB0C5',accent:'#6CB4FF',hi:'#FFC857',card:'#18283F',bul:['#6CB4FF','#FFA94D','#4ADE80','#C792FF']},
-  signal:{bg:'#0A66C2',ink:'#FFFFFF',muted:'#CFE4F8',accent:'#FFC857',hi:'#FFC857',card:'#0B58A8',bul:['#9CCBFF','#FFB347','#7EE0B0','#D3B2FF']}
+  paper :{bg:'#F4F6F9',ink:'#0F1B2D',muted:'#5B6B80',accent:'#0A66C2',hi:'#FFC857',card:'#FFFFFF'},
+  ink   :{bg:'#0F1B2D',ink:'#F4F6F9',muted:'#9FB0C5',accent:'#6CB4FF',hi:'#FFC857',card:'#18283F'},
+  signal:{bg:'#0A66C2',ink:'#FFFFFF',muted:'#CFE4F8',accent:'#FFC857',hi:'#FFC857',card:'#0B58A8'}
 };
 const currentTheme=()=>THEMES[document.querySelector('input[name=theme]:checked').value];
 document.querySelectorAll('input[name=theme]').forEach(r=>r.addEventListener('change',()=>state.data&&renderSlides()));
 els.author.addEventListener('change',()=>{if(state.data){showResultName();$('postLabel').placeholder=defaultLabel(state.data)||'Name on graphics';renderSlides()}});
 function showResultName(){const n=els.author.value.trim()||'Your name';els.liName.textContent=n;els.avatar.textContent=n[0].toUpperCase()}
 
-/* Text with optional highlighted words (marker-style background). o.hl = list of words or phrases to highlight. */
-const normWord=w=>String(w).toLowerCase().replace(/[^\p{L}\p{N}%$€£₹]/gu,'');
-function hlMask(words,phrases){
-  const nw=words.map(normWord), mask=new Array(words.length).fill(false);
-  (phrases||[]).forEach(ph=>{
-    const pw=String(ph).split(/\s+/).map(normWord).filter(Boolean); if(!pw.length) return;
-    for(let i=0;i+pw.length<=nw.length;i++) if(pw.every((x,k)=>nw[i+k]===x)) for(let k=0;k<pw.length;k++) mask[i+k]=true;
-  });
-  return mask;
+function wrapLines(ctx,text,maxW){
+  const words=String(text).split(/\s+/).filter(Boolean),lines=[];let line='';
+  for(const w of words){const t=line?line+' '+w:w;
+    if(ctx.measureText(t).width>maxW&&line){lines.push(line);line=w}else line=t}
+  if(line)lines.push(line);return lines;
 }
-function layout(ctx,text,o){
-  const words=String(text||'').split(/\s+/).filter(Boolean);
+function fit(ctx,text,o){
   let size=o.max,lines=[];
-  for(;;){
+  for(;size>=o.min;size-=2){
     ctx.font=`${o.weight} ${size}px ${o.family}`;
-    lines=[];let cur=[];
-    for(let i=0;i<words.length;i++){
-      const t=(cur.length?cur.map(k=>words[k]).join(' ')+' ':'')+words[i];
-      if(ctx.measureText(t).width>o.maxW&&cur.length){lines.push(cur);cur=[i]}else cur.push(i);
-    }
-    if(cur.length)lines.push(cur);
-    if(lines.length*size*o.lh<=o.maxH||size-2<o.min)break;
-    size-=2;
+    lines=wrapLines(ctx,text,o.maxW);
+    if(lines.length*size*o.lh<=o.maxH)break;
   }
-  return {size,lines,words};
+  return {size,lines};
 }
-const lumOf=hex=>{const n=parseInt(String(hex).replace('#',''),16),r=(n>>16)&255,g=(n>>8)&255,b=n&255;return (0.299*r+0.587*g+0.114*b)/255};
-const inkOn=hex=>lumOf(hex)>0.58?'#0F1B2D':'#FFFFFF';
-function roundRect(ctx,x,y,w,h,r){ctx.beginPath();if(ctx.roundRect)ctx.roundRect(x,y,w,h,r);else ctx.rect(x,y,w,h);ctx.fill()}
 function drawText(ctx,text,x,y,o){
-  const f=layout(ctx,text,o), lh=f.size*o.lh;
-  ctx.font=`${o.weight} ${f.size}px ${o.family}`;ctx.textBaseline='top';
-  const mask=o.hl&&o.hl.length?hlMask(f.words,o.hl):null, space=ctx.measureText(' ').width;
-  const hiColor=o.hlColor||'#FFC857', hiInk=inkOn(hiColor);
-  f.lines.forEach((ln,li)=>{
-    const ly=y+li*lh; let cx=x; const pos=[];
-    if(o.align==='center'){let tw=-space;ln.forEach(wi=>{tw+=ctx.measureText(f.words[wi]).width+space});cx=x+(o.maxW-tw)/2}
-    ln.forEach(wi=>{const ww=ctx.measureText(f.words[wi]).width;pos.push([cx,ww]);cx+=ww+space});
-    if(mask){   // one background bar for each run of highlighted words
-      ctx.fillStyle=hiColor;
-      for(let k=0;k<ln.length;k++){
-        if(!mask[ln[k]]) continue; let e=k; while(e+1<ln.length&&mask[ln[e+1]]) e++;
-        const pad=Math.min(10,f.size*0.12), x0=pos[k][0]-pad, x1=pos[e][0]+pos[e][1]+pad;
-        roundRect(ctx,x0,ly+f.size*0.08,x1-x0,f.size*0.98,Math.min(14,f.size*0.22)); k=e;
-      }
-    }
-    ln.forEach((wi,k)=>{ctx.fillStyle=(mask&&mask[wi])?hiInk:o.color;ctx.fillText(f.words[wi],pos[k][0],ly)});
-  });
-  return f.lines.length*lh;
+  const f=fit(ctx,text,o);
+  ctx.font=`${o.weight} ${f.size}px ${o.family}`;ctx.fillStyle=o.color;ctx.textBaseline='top';
+  f.lines.forEach((l,i)=>ctx.fillText(l,x,y+i*f.size*o.lh));
+  return f.lines.length*f.size*o.lh;
 }
 function coverCrop(ctx,img,x,y,w,h){
   const s=Math.max(w/img.width,h/img.height),dw=img.width*s,dh=img.height*s;
@@ -693,202 +646,60 @@ function newCanvas(t){
   const ctx=c.getContext('2d');ctx.fillStyle=t.bg;ctx.fillRect(0,0,W,H);return [c,ctx];
 }
 
-/* ============ WHAT THE GRAPHICS SHOW: only what the post text says ============ */
-const BOLD_FROM=(()=>{const m={};for(let i=0;i<26;i++){m[String.fromCodePoint(0x1D5D4+i)]=String.fromCharCode(65+i);m[String.fromCodePoint(0x1D5EE+i)]=String.fromCharCode(97+i)}for(let i=0;i<10;i++)m[String.fromCodePoint(0x1D7EC+i)]=String(i);return m})();
-const plainText=s=>Array.from(String(s||''),c=>BOLD_FROM[c]||c).join('').replace(/\*\*/g,'');
-const nrm=s=>plainText(s).toLowerCase().replace(/[^\p{L}\p{N}%$€£₹]+/gu,' ').trim();
-const hasPhrase=(text,phrase)=>{const p=nrm(phrase);return !!p&&(' '+nrm(text)+' ').includes(' '+p+' ')};
-const BUL_RE=/^\s*(?:(?:‣|⚡|•|▪️?|▶️?|►|→|➤|➡️|✔️|✅|🔹|🔸|🔵|🟠|🟢|🟣|🔴|🟡|⚪|🟤|⚫)\s*|[-*]\s+)(?=\S)/u;
-const cut=(t,n)=>{t=String(t||'').replace(/\s+/g,' ').trim();if(t.length<=n)return t;return t.slice(0,n).replace(/\s+\S*$/,'').replace(/[,;:\- ]+$/,'')+'…'};
-const tokSet=s=>new Set(nrm(s).split(' ').filter(w=>w.length>2));
-function similar(a,b){   // mostly the same words: the same point said twice
-  const A=tokSet(a),B=tokSet(b);
-  if(Math.min(A.size,B.size)<2) return !!nrm(a)&&nrm(a)===nrm(b);
-  let n=0;A.forEach(w=>{if(B.has(w))n++});return n/Math.min(A.size,B.size)>=0.75;
-}
-/* Everything on the slides is taken from the CURRENT post text (so it follows your edits), each item once. */
-function deriveGfx(d){
-  const post=String(d.post||'');
-  const L=post.split(/\r?\n/).map((raw,i)=>({i:i+1,raw,t:plainText(raw.replace(BUL_RE,'')).trim()})).filter(x=>x.t);
-  const skip=x=>/^#/.test(x.t)||/^\(\s*(Part\s+\d|Tagging)/i.test(x.t);
-  const first=L[0], hook=first?first.t:'';
-  let src=L.slice(1).filter(x=>BUL_RE.test(x.raw));
-  const bulleted=src.length>0;
-  if(!bulleted) src=L.slice(1).filter(x=>!skip(x)&&!/\?\s*$/.test(x.t)).slice(0,4);
-  const kps=(d.key_points||[]).filter(k=>hasPhrase(post,k));
-  let points=src.slice(0,4).map(x=>{const hit=kps.find(k=>hasPhrase(x.t,k));return {text:hit||cut(x.t,100),full:x.t,line:x.i}});
-  let stat=null; const sv=String(d.stat_value||'').trim();
-  if(sv&&hasPhrase(post,sv)){
-    const ln=L.find(x=>hasPhrase(x.t,sv)); let label=String(d.stat_label||'').trim();
-    if(!label||!hasPhrase(post,label)){label='';if(ln){const k=ln.t.toLowerCase().indexOf(sv.toLowerCase());const after=k>=0?ln.t.slice(k+sv.length).replace(/^[\s:–—,.;-]+/,''):'';label=cut(after.length>=3?after:ln.t,90)}}
-    stat={value:sv,label,line:ln?ln.i:0,full:ln?ln.t:''};
+function slideCover(d,t,img){
+  const [c,ctx]=newCanvas(t); const lay=img?(d._cover||'top'):'plain';
+  let textTop=250,maxH=760,maxF=132;
+  if(lay==='top'){
+    coverCrop(ctx,img,0,0,W,680); ctx.fillStyle=t.hi;ctx.fillRect(0,680,W,14); textTop=770;maxH=400;maxF=96;
+  }else if(lay==='bottom'){
+    ctx.fillStyle=t.hi;ctx.fillRect(0,598,W,14); coverCrop(ctx,img,0,612,W,H-612-150); textTop=150;maxH=420;maxF=96;
+  }else if(lay==='inset'){
+    ctx.fillStyle=t.hi;ctx.fillRect(96,116,920,520); coverCrop(ctx,img,80,100,920,520); textTop=720;maxH=440;maxF=96;
+  }else{
+    ctx.fillStyle=t.hi;ctx.fillRect(80,160,120,14);
   }
-  let question=null; const dq=String(d.closing_question||'').trim();
-  const qOk=dq&&hasPhrase(post,dq), qLine=qOk?L.find(x=>hasPhrase(x.t,dq)):[...L].reverse().find(x=>x.t.includes('?')&&!skip(x));
-  if(qLine){const m=qLine.t.match(/[^.!?]*\?/g);question={text:qOk?dq:(m?m[m.length-1].trim():qLine.t),line:qLine.i}}
-  const dropped=[];   // nothing is shown twice
-  if(stat&&(similar(stat.full,hook)||hasPhrase(hook,stat.value))){dropped.push(`Key number “${stat.value}” is already in the headline`);stat=null}
-  const kept=[];
-  points.forEach(p=>{
-    if(similar(p.full,hook)||similar(p.text,hook)){dropped.push(`“${cut(p.text,40)}” repeats the headline`);return}
-    if(kept.some(k=>similar(k.full,p.full)||similar(k.text,p.text))){dropped.push(`“${cut(p.text,40)}” repeats another point`);return}
-    kept.push(p);
-  });
-  points=kept;
-  if(stat){
-    const idx=points.findIndex(p=>hasPhrase(p.full,stat.value));
-    if(idx>=0){
-      if(points.length>2){dropped.push(`“${cut(points[idx].text,40)}” is already shown as the key number`);points.splice(idx,1)}
-      else{dropped.push(`Key number “${stat.value}” is already in a takeaway`);stat=null}
-    }
-  }
-  if(question&&(similar(question.text,hook)||points.some(p=>similar(p.full,question.text)))){dropped.push('The closing question repeats the headline or a takeaway');question=null}
-  return {hook,hookLine:first?first.i:0,points,stat,question,dropped,bulleted};
-}
-function autoHl(g){   // when the writer gave no highlight words: numbers and percentages
-  const txt=[g.hook,...g.points.map(p=>p.text),g.stat&&g.stat.label,g.question&&g.question.text].filter(Boolean).join(' ');
-  return [...new Set((txt.match(/[$€£₹]?\d[\d.,]*%?/g)||[]).map(x=>x.replace(/[.,]+$/,'')))].slice(0,6);
-}
-const hlFor=(d,g)=>(Array.isArray(d.highlights)&&(d.highlights.length||d._hlTouched))?d.highlights:autoHl(g||deriveGfx(d));
-
-/* ============ SLIDES (three designs for each) ============ */
-const VAR_N=3, vOf=(d,k)=>(((d._var||{})[k])||0)%VAR_N;
-const hlOn=(fill,t)=>Math.abs(lumOf(fill)-lumOf(t.hi))<0.2?'#FFFFFF':t.hi;   // highlight colour that stays visible on this fill
-
-function slideCover(d,t,img,g,hl){
-  const [c,ctx]=newCanvas(t), v=vOf(d,'cover');
-  let x=80,top=250,maxH=760,maxF=132,color=t.ink,hlc=t.hi,align='left';
-  if(img){
-    const lay=['top','bottom','inset'][v];
-    if(lay==='top'){coverCrop(ctx,img,0,0,W,680);ctx.fillStyle=t.hi;ctx.fillRect(0,680,W,14);top=770;maxH=400;maxF=96}
-    else if(lay==='bottom'){ctx.fillStyle=t.hi;ctx.fillRect(0,598,W,14);coverCrop(ctx,img,0,612,W,H-612-150);top=150;maxH=420;maxF=96}
-    else{ctx.fillStyle=t.hi;ctx.fillRect(96,116,920,520);coverCrop(ctx,img,80,100,920,520);top=720;maxH=440;maxF=96}
-  }else if(v===0){ctx.fillStyle=t.hi;ctx.fillRect(80,160,120,14)}
-  else if(v===1){ctx.fillStyle=t.accent;ctx.fillRect(0,0,W,900);ctx.fillStyle=t.hi;ctx.fillRect(0,900,W,14);top=190;maxH=600;color=inkOn(t.accent);hlc=hlOn(t.accent,t)}
-  else{ctx.fillStyle=t.hi;ctx.fillRect(W/2-60,330,120,14);top=420;maxH=560;maxF=124;align='center'}
-  drawText(ctx,g.hook,x,top,{maxW:W-160,maxH,max:maxF,min:54,weight:800,family:DISPLAY,lh:1.08,color,hl,hlColor:hlc,align});
+  drawText(ctx,d.hook,80,textTop,{maxW:W-160,maxH,max:maxF,min:54,weight:800,family:DISPLAY,lh:1.08,color:t.ink});
   footer(ctx,t,'Swipe',d);
   return c;
 }
-/* rows of coloured numbered bullets: used for the key takeaways and for the series recap */
-function drawRows(ctx,t,items,v,hl){
-  const n=items.length, top=210, bottom=H-190, rowH=(bottom-top)/n, cols=t.bul||[t.accent,t.hi];
-  const big=n<=4, maxF=big?54:(n<=6?42:34), minF=big?30:22, gap=big?28:14;
-  const R=Math.max(18,Math.min(36,(rowH-gap)*0.32));
-  items.forEach((it,i)=>{
-    const y=top+i*rowH, cardH=rowH-gap, col=cols[(it.color!==undefined?it.color:i)%cols.length], cy=y+cardH/2;
-    let tx;
-    if(v===0){
-      ctx.fillStyle=t.card;ctx.fillRect(80,y,W-160,cardH);ctx.fillStyle=col;ctx.fillRect(80,y,14,cardH);
-      const cx=80+14+22+R; tx=cx+R+26; badge(ctx,it.badge,cx,cy,R,col);
-    }else if(v===1){
-      const cx=80+R; tx=cx+R+30;
-      if(i<n-1&&items[i+1]){ctx.save();ctx.globalAlpha=.35;ctx.strokeStyle=t.muted;ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(cx,cy+R+6);ctx.lineTo(cx,cy+rowH-R-6);ctx.stroke();ctx.restore()}
-      badge(ctx,it.badge,cx,cy,R,col);
-    }else{
-      ctx.fillStyle=t.card;roundRect(ctx,80,y,W-160,cardH,22);
-      ctx.save();ctx.globalAlpha=.16;ctx.fillStyle=col;roundRect(ctx,80,y,W-160,cardH,22);ctx.restore();
-      const S=R*2+8; ctx.fillStyle=col;roundRect(ctx,96,cy-S/2,S,S,Math.min(22,S*.28));
-      if(it.badge){ctx.font=`800 ${Math.round(R*1.05)}px ${DISPLAY}`;ctx.fillStyle=inkOn(col);ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(it.badge,96+S/2,cy+2);ctx.textAlign='left'}
-      tx=96+S+26;
-    }
-    const o={maxW:W-80-24-tx,maxH:cardH-24,max:maxF,min:minF,weight:700,family:DISPLAY,lh:1.15,color:t.ink,hl,hlColor:t.hi};
-    const h=layout(ctx,it.text,o); const ty=cy-(h.lines.length*h.size*o.lh)/2;
-    drawText(ctx,it.text,tx,ty,o);
-  });
-}
-function badge(ctx,label,cx,cy,R,col){
-  ctx.fillStyle=col;ctx.beginPath();ctx.arc(cx,cy,label?R:Math.max(9,R*.3),0,Math.PI*2);ctx.fill();
-  if(label){ctx.font=`800 ${Math.round(R*1.05)}px ${DISPLAY}`;ctx.fillStyle=inkOn(col);ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(label,cx,cy+2);ctx.textAlign='left'}
-}
-function slidePoints(d,t,g,hl){
+function slidePoints(d,t){
   const [c,ctx]=newCanvas(t);
   ctx.font=`700 34px ${BODY}`;ctx.fillStyle=t.muted;ctx.textBaseline='top';ctx.fillText('Key takeaways',80,110);
-  drawRows(ctx,t,g.points.map((p,i)=>({badge:String(i+1),text:p.text,color:i})),vOf(d,'points'),hl);
-  footer(ctx,t,'',d);
-  return c;
-}
-function slideStat(d,t,g,hl){
-  const [c,ctx]=newCanvas(t), v=vOf(d,'stat'), s=g.stat;
-  const num={maxH:420,min:90,weight:800,family:DISPLAY,lh:1.02}, lab={maxH:400,max:60,min:36,weight:500,family:BODY,lh:1.3,color:t.ink,hl,hlColor:t.hi};
-  if(v===0){
-    ctx.fillStyle=t.hi;ctx.fillRect(80,250,120,14);
-    const h=drawText(ctx,s.value,80,320,{...num,maxW:W-160,max:260,color:t.accent});
-    drawText(ctx,s.label,80,320+h+50,{...lab,maxW:W-200});
-  }else if(v===1){
-    ctx.fillStyle=t.hi;ctx.fillRect(W/2-60,250,120,14);
-    const h=drawText(ctx,s.value,80,320,{...num,maxW:W-160,max:260,color:t.accent,align:'center'});
-    drawText(ctx,s.label,100,320+h+50,{...lab,maxW:W-200,align:'center'});
-  }else{
-    ctx.fillStyle=t.accent;ctx.fillRect(0,200,W,620);
-    const h=drawText(ctx,s.value,80,300,{...num,maxH:420,maxW:W-160,max:260,color:inkOn(t.accent),align:'center'});
-    ctx.fillStyle=t.hi;ctx.fillRect(0,820,W,14);
-    drawText(ctx,s.label,100,900,{...lab,maxW:W-200,maxH:260,align:'center'});
-  }
-  footer(ctx,t,'',d);
-  return c;
-}
-function slideClosing(d,t,g,hl){
-  const [c,ctx]=newCanvas(t), v=vOf(d,'closing'), q=g.question.text;
-  const o={maxH:620,max:92,min:48,weight:800,family:DISPLAY,lh:1.12,color:t.ink,hl,hlColor:t.hi};
-  if(v===0){ctx.fillStyle=t.hi;ctx.fillRect(80,250,120,14);drawText(ctx,q,80,320,{...o,maxW:W-160})}
-  else if(v===1){ctx.fillStyle=t.hi;ctx.fillRect(W/2-60,330,120,14);drawText(ctx,q,80,400,{...o,maxW:W-160,align:'center'})}
-  else{ctx.fillStyle=t.accent;roundRect(ctx,80,230,W-160,760,28);drawText(ctx,q,130,330,{...o,maxW:W-260,maxH:560,color:inkOn(t.accent),hlColor:hlOn(t.accent,t)})}
-  footer(ctx,t,'',d);
-  return c;
-}
-/* Series recap: one image with the key points of every post, each point once */
-function recapItems(){
-  const n=state.series.length, per=n<=4?2:1, rows=[], taken=[], hl=[];
-  state.series.forEach((p,k)=>{
-    const g=deriveGfx(p); hl.push(...hlFor(p,g)); let got=0;
-    for(const pt of g.points){
-      if(got>=per) break; if(taken.some(x=>similar(x,pt.text))) continue;
-      rows.push({badge:got===0?String(k+1):null,text:cut(pt.text,90),color:k}); taken.push(pt.text); got++;
-    }
-    if(!got&&g.hook&&!taken.some(x=>similar(x,g.hook))){rows.push({badge:String(k+1),text:cut(g.hook,90),color:k});taken.push(g.hook)}
+  const pts=d.key_points.length?d.key_points:[d.hook];
+  const top=210,area=H-top-190,rowH=area/pts.length;
+  pts.forEach((p,i)=>{
+    const y=top+i*rowH;
+    ctx.fillStyle=t.card;ctx.fillRect(80,y,W-160,rowH-28);
+    ctx.fillStyle=i%2?t.hi:t.accent;ctx.fillRect(80,y,14,rowH-28);
+    drawText(ctx,p,130,y+30,{maxW:W-260,maxH:rowH-90,max:56,min:32,weight:700,family:DISPLAY,lh:1.15,color:t.ink});
   });
-  return {rows,hl:[...new Set(hl)]};
-}
-function slideSummary(d,t,r){
-  const [c,ctx]=newCanvas(t);
-  ctx.font=`700 34px ${BODY}`;ctx.fillStyle=t.muted;ctx.textBaseline='top';ctx.fillText(`Series recap · ${state.series.length} posts`,80,110);
-  drawRows(ctx,t,r.rows,vOf(d,'summary'),r.hl);
   footer(ctx,t,'',d);
   return c;
 }
-const themeFor=d=>{let t=currentTheme();if(d&&d._swap)t={...t,accent:t.hi,hi:t.accent};return t};
-function recapCanvas(){
-  const last=state.series[state.series.length-1]; if(!last||state.series.length<2) return null;
-  const r=recapItems(); return r.rows.length?slideSummary(last,themeFor(last),r):null;
+function slideStat(d,t){
+  const [c,ctx]=newCanvas(t);
+  ctx.fillStyle=t.hi;ctx.fillRect(80,250,120,14);
+  const h=drawText(ctx,d.stat_value,80,320,{maxW:W-160,maxH:420,max:260,min:90,weight:800,family:DISPLAY,lh:1.02,color:t.accent});
+  drawText(ctx,d.stat_label,80,320+h+50,{maxW:W-200,maxH:400,max:60,min:36,weight:500,family:BODY,lh:1.3,color:t.ink});
+  footer(ctx,t,'',d);
+  return c;
 }
-function buildSlideList(d,img){
-  const t=themeFor(d), g=deriveGfx(d), hl=hlFor(d,g);
-  const list=[['Cover',slideCover(d,t,img,g,hl),'cover']];
-  if(g.points.length) list.push(['Key takeaways',slidePoints(d,t,g,hl),'points']);
-  if(g.stat) list.push(['Key number',slideStat(d,t,g,hl),'stat']);
-  if(g.question) list.push(['Closing question',slideClosing(d,t,g,hl),'closing']);
-  if(state.series.length>1&&state.series[state.series.length-1]===d){const r=recapItems();if(r.rows.length)list.push(['Series recap',slideSummary(d,t,r),'summary'])}
-  return list;
+function slideClosing(d,t){
+  const [c,ctx]=newCanvas(t);
+  ctx.fillStyle=t.hi;ctx.fillRect(80,250,120,14);
+  drawText(ctx,d.closing_question||'What is your take?',80,320,{maxW:W-160,maxH:620,max:92,min:48,weight:800,family:DISPLAY,lh:1.12,color:t.ink});
+  ctx.font=`500 36px ${BODY}`;ctx.fillStyle=t.muted;ctx.textBaseline='top';
+  ctx.fillText('Tell me in the comments.',80,1030);
+  footer(ctx,t,'',d);
+  return c;
 }
-const isOff=(d,key)=>!!(d._off&&d._off[key]);
-const chosenSlides=(d,list)=>(list||state.slides).filter(x=>!isOff(d,x[2]));
 
-function renderSources(d){
-  const g=deriveGfx(d), box=$('srcList'); box.replaceChildren();
-  const row=(label,text,line)=>{const e=document.createElement('div');const b=document.createElement('b');b.textContent=label+': ';e.append(b,document.createTextNode(`“${text}” · line ${line} of your post`));box.append(e)};
-  if(g.hook) row('Headline',g.hook,g.hookLine);
-  g.points.forEach((p,i)=>row('Takeaway '+(i+1),p.text,p.line));
-  if(g.stat) row('Key number',g.stat.value+(g.stat.label?' '+g.stat.label:''),g.stat.line);
-  if(g.question) row('Closing question',g.question.text,g.question.line);
-  const note=(txt)=>{const e=document.createElement('div');e.textContent=txt;e.style.fontStyle='italic';box.append(e)};
-  if(!g.bulleted&&g.points.length) note('Your post has no bullets, so the takeaways use its short lines.');
-  g.dropped.forEach(x=>note('Left out so nothing repeats: '+x));
-}
-let gfxTimer;
-function scheduleGfx(){   // graphics follow edits to the post text
-  clearTimeout(gfxTimer);
-  gfxTimer=setTimeout(()=>{const d=state.data;if(!d)return;const f=plainText(String(d.post||'').split(/\r?\n/).find(x=>x.trim())||'').trim();if(f)d.hook=f;renderTabs();renderSlides()},450);
+function buildSlideList(d,img){
+  let t=currentTheme(); if(d._swap) t={...t,accent:t.hi,hi:t.accent};
+  const list=[['Cover',slideCover(d,t,img)],['Key takeaways',slidePoints(d,t)]];
+  if(d.stat_value&&d.stat_value.trim()) list.push(['Key number',slideStat(d,t)]);
+  list.push(['Closing question',slideClosing(d,t)]);
+  return list;
 }
 async function renderSlides(){
   const d=state.data; if(!d) return;
@@ -896,44 +707,30 @@ async function renderSlides(){
   const list=buildSlideList(d,state.aiImage);
   state.slides=list;
   els.gallery.replaceChildren();
-  list.forEach(([name,canvas,key],i)=>{
-    const box=document.createElement('div');box.className='slide'+(isOff(d,key)?' off':'');
+  list.forEach(([name,canvas],i)=>{
+    const box=document.createElement('div');box.className='slide';
     canvas.setAttribute('role','img');canvas.setAttribute('aria-label',`Slide ${i+1}: ${name}`);
     const bar=document.createElement('div');bar.className='bar';
     const s=document.createElement('span');s.textContent=`${i+1}. ${name}`;
-    const png=document.createElement('button');png.className='btn ghost';png.type='button';png.textContent='PNG';
-    png.addEventListener('click',()=>downloadCanvas(canvas,`slide-${i+1}.png`));
-    const inc=document.createElement('label');inc.className='inc';
-    const cb=document.createElement('input');cb.type='checkbox';cb.checked=!isOff(d,key);cb.setAttribute('aria-label',`Include ${name} in the PDF, PNG downloads and zip`);
-    cb.addEventListener('change',()=>{d._off=d._off||{};if(cb.checked)delete d._off[key];else d._off[key]=true;box.classList.toggle('off',!cb.checked);pdfNote()});
-    inc.append(cb,document.createTextNode('Include'));
-    const alt=document.createElement('button');alt.className='btn ghost';alt.type='button';alt.textContent='Different design';
-    alt.addEventListener('click',()=>{d._var=d._var||{};d._var[key]=((d._var[key]||0)+1)%VAR_N;renderSlides()});
-    bar.append(s,png,inc,alt);box.append(canvas,bar);els.gallery.append(box);
+    const b=document.createElement('button');b.className='btn ghost';b.type='button';b.textContent='PNG';
+    b.addEventListener('click',()=>downloadCanvas(canvas,`slide-${i+1}.png`));
+    bar.append(s,b);box.append(canvas,bar);els.gallery.append(box);
   });
-  pdfNote(); renderSources(d);
-}
-function pdfNote(){
-  const d=state.data; if(!d||!state.slides.length) return; const n=chosenSlides(d).length, m=state.slides.length;
-  $('pdfNote').textContent=n===m?`All ${m} slides are included in the PDF, PNG downloads and zip.`:`${n} of ${m} slides are included in the PDF, PNG downloads and zip. Tick “Include” on a slide to add it back.`;
 }
 function downloadUrl(url,name){const a=document.createElement('a');a.href=url;a.download=name;document.body.append(a);a.click();a.remove()}
 function downloadCanvas(canvas,name){canvas.toBlob(b=>{const u=URL.createObjectURL(b);downloadUrl(u,name);setTimeout(()=>URL.revokeObjectURL(u),2000)},'image/png')}
 $('zipBtn').addEventListener('click',async()=>{
-  const d=state.data; if(!d) return; const list=chosenSlides(d); if(!list.length) return toast('Tick at least one slide to include.');
-  for(let i=0;i<list.length;i++){downloadCanvas(list[i][1],`slide-${i+1}.png`);await new Promise(r=>setTimeout(r,350))}
+  for(let i=0;i<state.slides.length;i++){downloadCanvas(state.slides[i][1],`slide-${i+1}.png`);await new Promise(r=>setTimeout(r,350))}
   if(state.aiImage) downloadUrl(els.aiImg.src,'ai-illustration.'+(state.aiExt||'png'));
 });
 $('aiDl').addEventListener('click',()=>downloadUrl(els.aiImg.src,'ai-illustration.'+(state.aiExt||'png')));
 $('pdfBtn').addEventListener('click',()=>{
   if(!window.jspdf) return toast('PDF library failed to load. Download the PNGs instead.');
-  const d=state.data; if(!d) return; const list=chosenSlides(d); if(!list.length) return toast('Tick at least one slide to include.');
   const {jsPDF}=window.jspdf;
   const pdf=new jsPDF({orientation:'portrait',unit:'px',format:[W,H],compress:true});
-  list.forEach(([,cv],i)=>{if(i)pdf.addPage([W,H],'portrait');pdf.addImage(cv.toDataURL('image/jpeg',0.92),'JPEG',0,0,W,H)});
+  state.slides.forEach(([,cv],i)=>{if(i)pdf.addPage([W,H],'portrait');pdf.addImage(cv.toDataURL('image/jpeg',0.92),'JPEG',0,0,W,H)});
   pdf.save('linkedin-carousel.pdf');
 });
-$('dlRecap').addEventListener('click',()=>{const c=recapCanvas();if(!c)return toast('The recap needs a series of posts.');downloadCanvas(c,'series-recap.png')});
 
 /* ============ SERIES TABS ============ */
 const shorten=(t,n)=>{t=String(t||'');return t.length>n?t.slice(0,n-1)+'…':t};
@@ -955,18 +752,18 @@ function selectPost(i){
 }
 
 /* ============ IMPROVE (rewrite one post) ============ */
-const SNAP=['post','hook','key_points','stat_value','stat_label','closing_question','image_prompt','highlights'];
+const SNAP=['post','hook','key_points','stat_value','stat_label','closing_question','image_prompt'];
 async function improve(instr){
   instr=(instr||$('improveText').value).trim();
   if(!instr) return toast('Type what to change, or tap a quick option.');
   const d=state.data; d.post=els.postText.value;
-  const snap={}; SNAP.forEach(k=>snap[k]=d[k]); snap._ht=!!d._hlTouched;
+  const snap={}; SNAP.forEach(k=>snap[k]=d[k]);
   $('improveBtn').disabled=true;
   try{
     const r=await callApi('/api/refine',()=>{const fd=new FormData();
       fd.append('token',els.token.value); fd.append('post',d.post);
       fd.append('instruction',instr); fd.append('tag_names',els.tags.value); return fd},120000,'Rewriting this post…');
-    SNAP.forEach(k=>{if(r[k]!==undefined)d[k]=r[k]}); d.models=r.models||d.models; d._undo=snap; delete d._hlTouched;
+    SNAP.forEach(k=>{if(r[k]!==undefined)d[k]=r[k]}); d.models=r.models||d.models; d._undo=snap;
     $('improveText').value=''; setStatus('');
     if(state.data===d){showResult(false); renderTabs(); await renderSlides()}
     toast('Post rewritten');
@@ -978,13 +775,13 @@ $('improveText').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDef
 document.querySelectorAll('#chips .chip').forEach(c=>c.addEventListener('click',()=>improve(c.dataset.q)));
 $('undoBtn').addEventListener('click',async()=>{
   const d=state.data; if(!d||!d._undo) return;
-  SNAP.forEach(k=>d[k]=d._undo[k]); if(d._undo._ht) d._hlTouched=true; d._undo=null;
+  SNAP.forEach(k=>d[k]=d._undo[k]); d._undo=null;
   showResult(false); renderTabs(); await renderSlides(); toast('Rewrite undone');
 });
 
 /* ============ LIBRARY (saved in this browser) ============ */
 const LIB_KEY='ps_library_v1';
-const FIELDS=['hook','key_points','stat_value','stat_label','closing_question','image_prompt','highlights'];
+const FIELDS=['hook','key_points','stat_value','stat_label','closing_question','image_prompt'];
 let LIB=(function(){try{const a=JSON.parse(localStorage.getItem(LIB_KEY)||'[]');return Array.isArray(a)?a:[]}catch(e){return []}})();
 function persist(){try{localStorage.setItem(LIB_KEY,JSON.stringify(LIB));return true}
   catch(e){toast('This browser blocked saving. Use Export backup to keep your posts.');return false}}
@@ -1000,8 +797,7 @@ function saveOne(d,meta){
     it={id:'p'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),created:new Date().toISOString(),status:'draft',series:'',part:'',...meta};
     LIB.push(it); d._libId=it.id;
   }
-  it.title=d.hook; it.post=d.post; it.date=d._date||''; it.label=d._label||((state.series.length>1&&hasNumbering(els.author.value))?defaultLabel(d):'');  // a numbered series name is remembered per post
-  FIELDS.forEach(f=>it[f]=d[f]); it.hlTouched=!!d._hlTouched; it.vars=d._var||{}; it.off=d._off||{}; it.swap=!!d._swap;
+  it.title=d.hook; it.post=d.post; it.date=d._date||''; it.label=d._label||((state.series.length>1&&hasNumbering(els.author.value))?defaultLabel(d):'');  // a numbered series name is remembered per post FIELDS.forEach(f=>it[f]=d[f]);
   if(meta&&meta.series){it.series=meta.series;it.part=meta.part}  // keep the series label when a series post is re-saved on its own
   if(it.status!=='posted') it.status=it.date?'scheduled':'draft';
   return it;
@@ -1024,7 +820,6 @@ $('saveAllBtn').addEventListener('click',()=>{
 function openItem(it){
   const d={post:it.post,_date:it.date,_libId:it.id,models:null};
   FIELDS.forEach(f=>d[f]=it[f]); if(it.label) d._label=it.label; d.key_points=d.key_points||[]; d.stat_value=d.stat_value||''; d.stat_label=d.stat_label||'';
-  d.highlights=Array.isArray(d.highlights)?d.highlights:[]; if(it.hlTouched) d._hlTouched=true; d._var=it.vars||{}; d._off=it.off||{}; d._swap=!!it.swap;
   state.series=[d]; state.seriesTitle=''; state.idx=0; state.data=d;
   showResult(true); renderTabs(); applyAi(); renderSlides();
 }
@@ -1085,7 +880,7 @@ $('libImportFile').addEventListener('change',async e=>{
       const it={id:String(x.id||('p'+Date.now().toString(36)+Math.random().toString(36).slice(2,6))),created:x.created||new Date().toISOString(),
         title:String(x.title||x.hook||''),post:x.post,date:/^\d{4}-\d{2}-\d{2}$/.test(x.date||'')?x.date:'',
         status:STATUS_LABEL[x.status]?x.status:'draft',series:String(x.series||''),part:String(x.part||''),label:String(x.label||'')};
-      FIELDS.forEach(k=>it[k]=x[k]!==undefined?x[k]:((k==='key_points'||k==='highlights')?[]:'')); it.hlTouched=!!x.hlTouched;
+      FIELDS.forEach(k=>it[k]=x[k]!==undefined?x[k]:(k==='key_points'?[]:''));
       const i=LIB.findIndex(y=>y.id===it.id); if(i>=0)LIB[i]=it; else LIB.push(it); n++;
     });
     persist(); renderLib(); toast(n?`Imported ${n} post${n>1?'s':''}`:'No posts found in that file');
@@ -1128,12 +923,6 @@ $('postLabel').addEventListener('input',()=>{
   if(v.trim()) d._label=v; else delete d._label;
   clearTimeout(lblTimer); lblTimer=setTimeout(renderSlides,250);
 });
-let hlTimer;
-$('hlWords').addEventListener('input',()=>{
-  const d=state.data; if(!d) return;
-  d.highlights=$('hlWords').value.split(',').map(x=>x.trim()).filter(Boolean).slice(0,10); d._hlTouched=true;
-  clearTimeout(hlTimer); hlTimer=setTimeout(renderSlides,250);
-});
 $('numberLabels').addEventListener('click',()=>{
   const base=els.author.value.trim(); if(!base) return toast('Type your name in the left panel first.');
   if(hasNumbering(base)) return toast('Your name already counts up by itself: Part 1, Part 2, Part 3…');
@@ -1146,7 +935,7 @@ $('shuffleBtn').addEventListener('click',()=>{
   const pick=a=>a[Math.floor(Math.random()*a.length)];
   const cur=document.querySelector('input[name=theme]:checked').value;
   document.querySelector(`input[name=theme][value=${pick(Object.keys(THEMES).filter(x=>x!==cur))}]`).checked=true;
-  d._var=d._var||{}; d._var.cover=(vOf(d,'cover')+1+Math.floor(Math.random()*(VAR_N-1)))%VAR_N; d._swap=Math.random()<.5;
+  d._cover=pick(['top','bottom','inset'].filter(x=>x!==(d._cover||'top'))); d._swap=Math.random()<.5;
   renderSlides();
 });
 $('allAiBtn').addEventListener('click',async()=>{
@@ -1195,15 +984,14 @@ function detailsText(d,idx,total){
   const L=[]; if(total>1) L.push(`Series: ${state.seriesTitle} (post ${idx+1} of ${total})`);
   L.push(`Headline: ${d.hook||''}`); if(d._date) L.push(`Planned date: ${d._date}`);
   const nm=labelFor(d); if(nm) L.push(`Name on graphics: ${nm}`);
-  L.push('Files: post.txt is the LinkedIn text. slide-*.png are the carousel slides you ticked'+(window.jspdf?', carousel.pdf is the same slides as one PDF':'')+(d._ai?', and illustration is the cover picture':'')+'.');
+  L.push('Files: post.txt is the LinkedIn text. slide-*.png are the carousel slides'+(window.jspdf?', carousel.pdf is the same slides as one PDF':'')+(d._ai?', and illustration is the cover picture':'')+'.');
   return L.join('\n')+'\n';
 }
 async function postFiles(d,idx,total){
   const files=[{name:'post.txt',data:te.encode(String(d.post||'').replace(/\s+$/,'')+'\n')},{name:'details.txt',data:te.encode(detailsText(d,idx,total))}];
-  const list=chosenSlides(d,buildSlideList(d,d._ai?d._ai.img:null));
+  const list=buildSlideList(d,d._ai?d._ai.img:null);
   for(let k=0;k<list.length;k++) files.push({name:`slide-${k+1}-${slug(list[k][0])}.png`,data:await canvasBytes(list[k][1])});
-  const pdf=list.length?pdfBytes(list):null; if(pdf) files.push({name:'carousel.pdf',data:pdf});
-  if(total>1&&idx===total-1){const rc=recapCanvas();if(rc)files.push({name:'Series recap.png',data:await canvasBytes(rc)})}
+  const pdf=pdfBytes(list); if(pdf) files.push({name:'carousel.pdf',data:pdf});
   if(d._ai&&d._ai.src){try{files.push({name:`illustration.${d._ai.ext||'png'}`,data:new Uint8Array(await (await fetch(d._ai.src)).arrayBuffer())})}catch(e){}}
   return files;
 }
@@ -1255,9 +1043,6 @@ $('dlSeriesDir').addEventListener('click',()=>exportPosts(state.series,'dir'));
 if(window.showDirectoryPicker){$('dlPostDir').hidden=false;$('dlSeriesDir').hidden=false}
 else document.querySelectorAll('.dirhint').forEach(e=>e.hidden=false);
 renderLib();
-const APP_VERSION='2026.10.11-graphics';
-(function(){const p=document.createElement('p');p.className='verline';p.id='verLine';p.textContent='Page version '+APP_VERSION;document.body.append(p);
-  try{const u=backendReady()?backendBase():'';if(u)fetch(u+'/health').then(r=>r.json()).then(j=>{p.textContent+=' · server version '+(j.version||'old (not updated)')}).catch(()=>{})}catch(e){}})();
 </script>
 </body>
 </html>
