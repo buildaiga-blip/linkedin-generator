@@ -93,6 +93,9 @@ details > div{margin-top:10px}
 .slide.off{opacity:.45}
 .slide .inc{display:inline-flex;align-items:center;gap:4px;font-size:.8125rem;color:var(--muted);cursor:pointer}
 .slide .bar .btn{padding:4px 8px;font-size:.75rem}
+.gta{width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid var(--line);border-radius:8px;font:inherit;resize:vertical}
+.srcbox input[type=text]{width:100%;box-sizing:border-box}
+.srcbox .field{margin:10px 0}
 .srcbox{margin-top:12px;font-size:.8125rem;color:var(--muted)}
 .srcbox summary{cursor:pointer;font-weight:700}
 .srclist div{margin:6px 0;line-height:1.4}
@@ -257,6 +260,11 @@ label.btn{margin:0}
             <button class="btn ghost" id="dlRecap" type="button">Download series recap image</button>
           </div>
           <p class="hint">Leave the date empty to save them as drafts. Dates make them appear in your calendar reminders.</p>
+          <details class="srcbox" id="recapBox"><summary>Edit the series recap text</summary>
+            <p class="hint">One line per row on the recap image (the last slide of the last post). Leave empty to build it from the posts. Keep each line a complete sentence.</p>
+            <textarea id="gRecap" rows="7" class="gta"></textarea>
+            <div class="inline" style="margin-top:8px"><button class="btn ghost" id="gRecapReset" type="button">Rebuild recap from the posts</button></div>
+          </details>
           <div class="exportrow" style="margin-top:12px">
             <b>Save the whole series</b>
             <button class="btn" id="dlSeriesZip" type="button">Download series .zip</button>
@@ -333,6 +341,15 @@ label.btn{margin:0}
           </div>
           <p class="hint" id="pdfNote" style="margin:0 0 10px"></p>
           <div class="gallery" id="gallery"></div>
+          <details class="srcbox" id="editBox"><summary>Edit the text on the graphics</summary>
+            <p class="hint">Change any wording here and the slides update. Leave a box empty to use the text from your post. Your wording is used even if it is not in the post.</p>
+            <div class="field"><label for="gHook">Headline (cover)</label><input type="text" id="gHook" maxlength="140" autocomplete="off"></div>
+            <div class="field"><label for="gPoints">Key takeaways (one per line, up to 6)</label><textarea id="gPoints" rows="5" class="gta"></textarea></div>
+            <div class="field"><label for="gStatV">Key number</label><input type="text" id="gStatV" maxlength="30" autocomplete="off" placeholder="e.g. 42%"></div>
+            <div class="field"><label for="gStatL">What the number means</label><input type="text" id="gStatL" maxlength="140" autocomplete="off"></div>
+            <div class="field"><label for="gQ">Closing question</label><input type="text" id="gQ" maxlength="200" autocomplete="off"></div>
+            <div class="inline"><button class="btn ghost" id="gReset" type="button">Reset graphics text to my post</button></div>
+          </details>
           <details class="srcbox"><summary>What the graphics are built from</summary>
             <div id="srcList" class="srclist"></div>
           </details>
@@ -700,6 +717,18 @@ const nrm=s=>plainText(s).toLowerCase().replace(/[^\p{L}\p{N}%$€£₹]+/gu,' '
 const hasPhrase=(text,phrase)=>{const p=nrm(phrase);return !!p&&(' '+nrm(text)+' ').includes(' '+p+' ')};
 const BUL_RE=/^\s*(?:(?:‣|⚡|•|▪️?|▶️?|►|→|➤|➡️|✔️|✅|🔹|🔸|🔵|🟠|🟢|🟣|🔴|🟡|⚪|🟤|⚫)\s*|[-*]\s+)(?=\S)/u;
 const cut=(t,n)=>{t=String(t||'').replace(/\s+/g,' ').trim();if(t.length<=n)return t;return t.slice(0,n).replace(/\s+\S*$/,'').replace(/[,;:\- ]+$/,'')+'…'};
+/* A complete thought that fits: whole sentences first; a long sentence is cut only at a natural clause break, never mid-phrase, and gets no "…". */
+function fit(t,max){
+  t=String(t||'').replace(/\s+/g,' ').trim(); if(!t||t.length<=max) return t;
+  const sents=t.match(/[^.!?]+[.!?]+(?=\s|$)|[^.!?]+$/g)||[t]; let out='';
+  for(const s0 of sents){const s=s0.trim(); if(!out){if(s.length<=max){out=s;continue}break} if((out+' '+s).length<=max) out+=' '+s; else break}
+  if(out) return out;
+  const first=sents[0].trim(); if(first.length<=max*1.6) return first;
+  let best=-1,m; const re=/(;\s|:\s|\s[—–]\s|,\s)/g;
+  while((m=re.exec(first))&&m.index<=max){if(m.index>=35)best=m.index}
+  if(best>0) return first.slice(0,best).replace(/[\s,;:\-–—]+$/,'');
+  return first.slice(0,max*1.6).replace(/\s+\S*$/,'').replace(/[,;:\- ]+$/,'')+'…';
+}
 const tokSet=s=>new Set(nrm(s).split(' ').filter(w=>w.length>2));
 function similar(a,b){   // mostly the same words: the same point said twice
   const A=tokSet(a),B=tokSet(b);
@@ -707,7 +736,7 @@ function similar(a,b){   // mostly the same words: the same point said twice
   let n=0;A.forEach(w=>{if(B.has(w))n++});return n/Math.min(A.size,B.size)>=0.75;
 }
 /* Everything on the slides is taken from the CURRENT post text (so it follows your edits), each item once. */
-function deriveGfx(d){
+function deriveBase(d){
   const post=String(d.post||'');
   const L=post.split(/\r?\n/).map((raw,i)=>({i:i+1,raw,t:plainText(raw.replace(BUL_RE,'')).trim()})).filter(x=>x.t);
   const skip=x=>/^#/.test(x.t)||/^\(\s*(Part\s+\d|Tagging)/i.test(x.t);
@@ -716,11 +745,11 @@ function deriveGfx(d){
   const bulleted=src.length>0;
   if(!bulleted) src=L.slice(1).filter(x=>!skip(x)&&!/\?\s*$/.test(x.t)).slice(0,4);
   const kps=(d.key_points||[]).filter(k=>hasPhrase(post,k));
-  let points=src.slice(0,4).map(x=>{const hit=kps.find(k=>hasPhrase(x.t,k));return {text:hit||cut(x.t,100),full:x.t,line:x.i}});
+  let points=src.slice(0,4).map(x=>{const hit=kps.find(k=>hasPhrase(x.t,k));return {text:hit||fit(x.t,110),full:x.t,line:x.i}});
   let stat=null; const sv=String(d.stat_value||'').trim();
   if(sv&&hasPhrase(post,sv)){
     const ln=L.find(x=>hasPhrase(x.t,sv)); let label=String(d.stat_label||'').trim();
-    if(!label||!hasPhrase(post,label)){label='';if(ln){const k=ln.t.toLowerCase().indexOf(sv.toLowerCase());const after=k>=0?ln.t.slice(k+sv.length).replace(/^[\s:–—,.;-]+/,''):'';label=cut(after.length>=3?after:ln.t,90)}}
+    if(!label||!hasPhrase(post,label)){label='';if(ln){const k=ln.t.toLowerCase().indexOf(sv.toLowerCase());const after=k>=0?ln.t.slice(k+sv.length).replace(/^[\s:–—,.;-]+/,''):'';label=fit(after.length>=3?after:ln.t,100)}}
     stat={value:sv,label,line:ln?ln.i:0,full:ln?ln.t:''};
   }
   let question=null; const dq=String(d.closing_question||'').trim();
@@ -744,6 +773,15 @@ function deriveGfx(d){
   }
   if(question&&(similar(question.text,hook)||points.some(p=>similar(p.full,question.text)))){dropped.push('The closing question repeats the headline or a takeaway');question=null}
   return {hook,hookLine:first?first.i:0,points,stat,question,dropped,bulleted};
+}
+/* Your own wording for the graphics (edited in "Edit the text on the graphics") wins over the automatic text. */
+function deriveGfx(d){
+  const g=deriveBase(d), o=d._g; if(!o) return g;
+  if(o.hook) g.hook=o.hook;
+  if(o.points&&o.points.length) g.points=o.points.map(t=>({text:t,full:t,line:0}));
+  if(o.statValue) g.stat={value:o.statValue,label:o.statLabel||(g.stat?g.stat.label:''),line:0,full:o.statValue};
+  if(o.question) g.question={text:o.question,line:0};
+  return g;
 }
 function autoHl(g){   // when the writer gave no highlight words: numbers and percentages
   const txt=[g.hook,...g.points.map(p=>p.text),g.stat&&g.stat.label,g.question&&g.question.text].filter(Boolean).join(' ');
@@ -839,14 +877,16 @@ function slideClosing(d,t,g,hl){
 }
 /* Series recap: one image with the key points of every post, each point once */
 function recapItems(){
+  const last=state.series[state.series.length-1], ed=last&&last._g&&last._g.recap;
+  if(ed&&ed.length){const hl=[];state.series.forEach(p=>hl.push(...hlFor(p,deriveGfx(p))));return {rows:ed.map((t,i)=>({badge:String(i+1),text:t,color:i})),hl:[...new Set(hl)]}}
   const n=state.series.length, per=n<=4?2:1, rows=[], taken=[], hl=[];
   state.series.forEach((p,k)=>{
     const g=deriveGfx(p); hl.push(...hlFor(p,g)); let got=0;
     for(const pt of g.points){
       if(got>=per) break; if(taken.some(x=>similar(x,pt.text))) continue;
-      rows.push({badge:got===0?String(k+1):null,text:cut(pt.text,90),color:k}); taken.push(pt.text); got++;
+      rows.push({badge:got===0?String(k+1):null,text:fit(pt.text,110),color:k}); taken.push(pt.text); got++;
     }
-    if(!got&&g.hook&&!taken.some(x=>similar(x,g.hook))){rows.push({badge:String(k+1),text:cut(g.hook,90),color:k});taken.push(g.hook)}
+    if(!got&&g.hook&&!taken.some(x=>similar(x,g.hook))){rows.push({badge:String(k+1),text:fit(g.hook,110),color:k});taken.push(g.hook)}
   });
   return {rows,hl:[...new Set(hl)]};
 }
@@ -890,6 +930,40 @@ function scheduleGfx(){   // graphics follow edits to the post text
   clearTimeout(gfxTimer);
   gfxTimer=setTimeout(()=>{const d=state.data;if(!d)return;const f=plainText(String(d.post||'').split(/\r?\n/).find(x=>x.trim())||'').trim();if(f)d.hook=f;renderTabs();renderSlides()},450);
 }
+function setIf(el,v){if(document.activeElement!==el&&el.value!==v)el.value=v}
+function fillGfxPanel(d){
+  const base=deriveBase(d), o=d._g||{};
+  setIf($('gHook'),o.hook||base.hook||'');
+  setIf($('gPoints'),(o.points&&o.points.length?o.points:base.points.map(p=>p.text)).join('\n'));
+  setIf($('gStatV'),o.statValue||(base.stat?base.stat.value:''));
+  setIf($('gStatL'),o.statLabel||(base.stat?base.stat.label:''));
+  setIf($('gQ'),o.question||(base.question?base.question.text:''));
+  const last=state.series[state.series.length-1], multi=state.series.length>1;
+  if(multi){const r=recapItems();setIf($('gRecap'),r.rows.map(x=>x.text).join('\n'))}
+}
+/* a field counts as "edited" only when it differs from what the post gives automatically */
+function readGfxPanel(){
+  const d=state.data; if(!d) return; const base=deriveBase(d), g={};
+  const v=(id)=>$(id).value.trim();
+  if(v('gHook')&&v('gHook')!==(base.hook||'')) g.hook=v('gHook');
+  const pts=$('gPoints').value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean).slice(0,6);
+  if(pts.length&&pts.join('|')!==base.points.map(p=>p.text).join('|')) g.points=pts;
+  if(v('gStatV')&&(!base.stat||v('gStatV')!==base.stat.value||v('gStatL')!==base.stat.label)){g.statValue=v('gStatV');g.statLabel=v('gStatL')}
+  if(v('gQ')&&v('gQ')!==(base.question?base.question.text:'')) g.question=v('gQ');
+  const keep=d._g&&d._g.recap; if(keep) g.recap=keep;
+  d._g=Object.keys(g).length?g:undefined; if(!d._g) delete d._g;
+}
+let gTimer;
+['gHook','gPoints','gStatV','gStatL','gQ'].forEach(id=>$(id).addEventListener('input',()=>{clearTimeout(gTimer);gTimer=setTimeout(()=>{readGfxPanel();renderSlides()},400)}));
+$('gReset').addEventListener('click',()=>{const d=state.data;if(!d)return;const rc=d._g&&d._g.recap;delete d._g;if(rc)d._g={recap:rc};['gHook','gPoints','gStatV','gStatL','gQ'].forEach(i=>$(i).value='');renderSlides();toast('Graphics text reset to your post')});
+$('gRecap').addEventListener('input',()=>{clearTimeout(gTimer);gTimer=setTimeout(()=>{
+  const last=state.series[state.series.length-1]; if(!last) return;
+  const lines=$('gRecap').value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean).slice(0,10);
+  const auto=(()=>{const g=last._g;if(g){const c=g.recap;delete g.recap;const r=recapItems().rows.map(x=>x.text).join('|');if(c)g.recap=c;return r}return recapItems().rows.map(x=>x.text).join('|')})();
+  last._g=last._g||{}; if(lines.length&&lines.join('|')!==auto) last._g.recap=lines; else delete last._g.recap;
+  if(!Object.keys(last._g).length) delete last._g; renderSlides();
+},400)});
+$('gRecapReset').addEventListener('click',()=>{const last=state.series[state.series.length-1];if(!last)return;if(last._g){delete last._g.recap;if(!Object.keys(last._g).length)delete last._g}$('gRecap').value='';renderSlides();toast('Recap rebuilt from the posts')});
 async function renderSlides(){
   const d=state.data; if(!d) return;
   try{await Promise.all([document.fonts.load(`800 40px "Bricolage Grotesque"`),document.fonts.load(`700 40px "Bricolage Grotesque"`),document.fonts.load(`500 40px "DM Sans"`),document.fonts.load(`700 40px "DM Sans"`)])}catch(e){}
@@ -911,7 +985,7 @@ async function renderSlides(){
     alt.addEventListener('click',()=>{d._var=d._var||{};d._var[key]=((d._var[key]||0)+1)%VAR_N;renderSlides()});
     bar.append(s,png,inc,alt);box.append(canvas,bar);els.gallery.append(box);
   });
-  pdfNote(); renderSources(d);
+  pdfNote(); renderSources(d); fillGfxPanel(d); $('recapBox').hidden=state.series.length<2;
 }
 function pdfNote(){
   const d=state.data; if(!d||!state.slides.length) return; const n=chosenSlides(d).length, m=state.slides.length;
@@ -1001,7 +1075,7 @@ function saveOne(d,meta){
     LIB.push(it); d._libId=it.id;
   }
   it.title=d.hook; it.post=d.post; it.date=d._date||''; it.label=d._label||((state.series.length>1&&hasNumbering(els.author.value))?defaultLabel(d):'');  // a numbered series name is remembered per post
-  FIELDS.forEach(f=>it[f]=d[f]); it.hlTouched=!!d._hlTouched; it.vars=d._var||{}; it.off=d._off||{}; it.swap=!!d._swap;
+  FIELDS.forEach(f=>it[f]=d[f]); it.hlTouched=!!d._hlTouched; it.vars=d._var||{}; it.g=d._g||null; it.off=d._off||{}; it.swap=!!d._swap;
   if(meta&&meta.series){it.series=meta.series;it.part=meta.part}  // keep the series label when a series post is re-saved on its own
   if(it.status!=='posted') it.status=it.date?'scheduled':'draft';
   return it;
@@ -1024,7 +1098,7 @@ $('saveAllBtn').addEventListener('click',()=>{
 function openItem(it){
   const d={post:it.post,_date:it.date,_libId:it.id,models:null};
   FIELDS.forEach(f=>d[f]=it[f]); if(it.label) d._label=it.label; d.key_points=d.key_points||[]; d.stat_value=d.stat_value||''; d.stat_label=d.stat_label||'';
-  d.highlights=Array.isArray(d.highlights)?d.highlights:[]; if(it.hlTouched) d._hlTouched=true; d._var=it.vars||{}; d._off=it.off||{}; d._swap=!!it.swap;
+  d.highlights=Array.isArray(d.highlights)?d.highlights:[]; if(it.hlTouched) d._hlTouched=true; d._var=it.vars||{}; if(it.g) d._g=it.g; d._off=it.off||{}; d._swap=!!it.swap;
   state.series=[d]; state.seriesTitle=''; state.idx=0; state.data=d;
   showResult(true); renderTabs(); applyAi(); renderSlides();
 }
