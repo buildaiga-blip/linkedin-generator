@@ -93,6 +93,10 @@ details > div{margin-top:10px}
 .slide.off{opacity:.45}
 .slide .inc{display:inline-flex;align-items:center;gap:4px;font-size:.8125rem;color:var(--muted);cursor:pointer}
 .slide .bar .btn{padding:4px 8px;font-size:.75rem}
+.recapbox{display:grid;grid-template-columns:1fr 230px;gap:16px;margin:14px 0;padding:12px;border:1px solid var(--line);border-radius:10px;background:#fff}
+.recapbox[hidden]{display:none}
+.recapprev canvas{display:block;width:100%;height:auto;border:1px solid var(--line);border-radius:8px}
+@media(max-width:700px){.recapbox{grid-template-columns:1fr}.recapprev{max-width:230px}}
 .gta{width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid var(--line);border-radius:8px;font:inherit;resize:vertical}
 .srcbox input[type=text]{width:100%;box-sizing:border-box}
 .srcbox .field{margin:10px 0}
@@ -260,11 +264,19 @@ label.btn{margin:0}
             <button class="btn ghost" id="dlRecap" type="button">Download series recap image</button>
           </div>
           <p class="hint">Leave the date empty to save them as drafts. Dates make them appear in your calendar reminders.</p>
-          <details class="srcbox" id="recapBox"><summary>Edit the series recap text</summary>
-            <p class="hint">One line per row on the recap image (the last slide of the last post). Leave empty to build it from the posts. Keep each line a complete sentence.</p>
-            <textarea id="gRecap" rows="7" class="gta"></textarea>
-            <div class="inline" style="margin-top:8px"><button class="btn ghost" id="gRecapReset" type="button">Rebuild recap from the posts</button></div>
-          </details>
+          <div class="recapbox" id="recapBox">
+            <div class="recapform">
+              <h3 style="margin:0 0 6px;font-size:1rem">Series recap graphic: edit its text here</h3>
+              <p class="hint" style="margin:0 0 8px">One line per row on the recap image. Edit, add or delete lines and the picture updates. The recap is also the last slide of the last post. Keep each line a complete sentence. Empty = built from the posts.</p>
+              <textarea id="gRecap" rows="8" class="gta" aria-label="Series recap lines"></textarea>
+              <div class="inline" style="margin-top:8px">
+                <button class="btn ghost" id="gRecapReset" type="button">Rebuild recap from the posts</button>
+                <button class="btn ghost" id="gRecapAlt" type="button">Different design</button>
+                <button class="btn ghost" id="gRecapPng" type="button">Download recap PNG</button>
+              </div>
+            </div>
+            <div class="recapprev" id="recapPrev" aria-label="Series recap preview"></div>
+          </div>
           <div class="exportrow" style="margin-top:12px">
             <b>Save the whole series</b>
             <button class="btn" id="dlSeriesZip" type="button">Download series .zip</button>
@@ -930,6 +942,12 @@ function scheduleGfx(){   // graphics follow edits to the post text
   clearTimeout(gfxTimer);
   gfxTimer=setTimeout(()=>{const d=state.data;if(!d)return;const f=plainText(String(d.post||'').split(/\r?\n/).find(x=>x.trim())||'').trim();if(f)d.hook=f;renderTabs();renderSlides()},450);
 }
+function drawRecapPreview(){
+  const box=$('recapBox'); box.hidden=state.series.length<2; if(box.hidden) return;
+  const c=recapCanvas(), p=$('recapPrev'); p.replaceChildren(); if(c){c.setAttribute('role','img');p.append(c)}
+}
+$('gRecapAlt').addEventListener('click',()=>{const l=state.series[state.series.length-1];if(!l)return;l._var=l._var||{};l._var.summary=((l._var.summary||0)+1)%VAR_N;renderSlides()});
+$('gRecapPng').addEventListener('click',()=>{const c=recapCanvas();if(!c)return toast('The recap needs a series of posts.');downloadCanvas(c,'series-recap.png')});
 function setIf(el,v){if(document.activeElement!==el&&el.value!==v)el.value=v}
 function fillGfxPanel(d){
   const base=deriveBase(d), o=d._g||{};
@@ -985,7 +1003,7 @@ async function renderSlides(){
     alt.addEventListener('click',()=>{d._var=d._var||{};d._var[key]=((d._var[key]||0)+1)%VAR_N;renderSlides()});
     bar.append(s,png,inc,alt);box.append(canvas,bar);els.gallery.append(box);
   });
-  pdfNote(); renderSources(d); fillGfxPanel(d); $('recapBox').hidden=state.series.length<2;
+  pdfNote(); renderSources(d); fillGfxPanel(d); drawRecapPreview();
 }
 function pdfNote(){
   const d=state.data; if(!d||!state.slides.length) return; const n=chosenSlides(d).length, m=state.slides.length;
